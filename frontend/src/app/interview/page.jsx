@@ -338,27 +338,26 @@ export default function InterviewPage() {
                         : "Low risk"}
                 </div>
               </div>
-</Card>
+            </Card>
 
-<Card title="Live AI Feedback" description="Real-time analysis feed">
-  <div className="max-h-64 space-y-2 overflow-y-auto">
-    {feedback.length === 0 ? (
-      <div className="py-4 text-center text-xs text-muted">
-        {isLive ? "Waiting for analysis..." : "Start an interview to see feedback"}
-      </div>
-    ) : (
-      feedback.map((f, i) => (
-        <div
-          key={i}
-          className="rounded-md border border-border bg-bg-card px-3 py-2 text-xs text-zinc-300"
-        >
-          {f}
-        </div>
-      ))
-    )}
-  </div>
-</Card>
-                
+            <Card title="Live AI Feedback" description="Real-time analysis feed">
+              <div className="max-h-64 space-y-2 overflow-y-auto">
+                {feedback.length === 0 ? (
+                  <div className="py-4 text-center text-xs text-muted">
+                    {isLive ? "Waiting for analysis..." : "Start an interview to see feedback"}
+                  </div>
+                ) : (
+                  feedback.map((f, i) => (
+                    <div
+                      key={i}
+                      className="rounded-md border border-border bg-bg-card px-3 py-2 text-xs text-zinc-300"
+                    >
+                      {f}
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
 
             <Card title="Session Info">
               <div className="space-y-2 text-sm">
@@ -379,16 +378,15 @@ export default function InterviewPage() {
                   )}
                 </div>
                 <div className="flex justify-between">
-  <span className="text-muted">WS</span>
-
-  {connected ? (
-    <Badge variant="success">Connected</Badge>
-  ) : status === "reconnecting" ? (
-    <Badge variant="warn">Reconnecting...</Badge>
-  ) : (
-    <Badge variant="muted">Disconnected</Badge>
-  )}
-</div>
+                  <span className="text-muted">WS</span>
+                  {connected ? (
+                    <Badge variant="success">Connected</Badge>
+                  ) : status === "reconnecting" ? (
+                    <Badge variant="warn">Reconnecting...</Badge>
+                  ) : (
+                    <Badge variant="muted">Disconnected</Badge>
+                  )}
+                </div>
                 <div className="flex justify-between">
                   <span className="text-muted">Tracking</span>
                   {isTracking ? (
@@ -400,22 +398,23 @@ export default function InterviewPage() {
               </div>
             </Card>
 
-<Card
-  title="Risk Timeline"
-  description={
-    isLive
-      ? "Real-time interview events and risk history."
-      : "Timeline will appear after the interview starts."
-  }
->
-  {isLive ? (
-    <RiskTimeline moments={moments} />
-  ) : (
-    <div className="flex h-32 items-center justify-center text-center text-sm text-muted">
-      Interview not started
-    </div>
-  )}
-</Card>
+            <Card
+              title="Risk Timeline"
+              description={
+                isLive
+                  ? "Real-time interview events and risk history."
+                  : "Timeline will appear after the interview starts."
+              }
+            >
+              {isLive ? (
+                <RiskTimeline moments={moments} />
+              ) : (
+                <div className="flex h-32 items-center justify-center text-center text-sm text-muted">
+                  Interview not started
+                </div>
+              )}
+            </Card>
+          </div>
         </div>
       </div>
     </ErrorBoundary>
