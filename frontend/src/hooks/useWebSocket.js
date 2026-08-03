@@ -124,7 +124,7 @@ export function useRealtimeSubscription(path, { enabled = true, onEvent } = {}) 
     [onEvent],
   );
 
-  const { connected } = useWebSocket({ path, onMessage: handleMessage, enabled });
+  const { connected, lastMessage, send, disconnect, reconnect } = useWebSocket({ path, onMessage: handleMessage, enabled });
 
   const clearEvents = useCallback(() => setEvents([]), []);
 
@@ -144,12 +144,17 @@ export function useRealtimeSubscription(path, { enabled = true, onEvent } = {}) 
   );
 
   return {
-    connected,
-    lastMessage,
-    send,
-    disconnect,
-    reconnect,
-  };
+  connected,
+  lastMessage,
+  send,
+  disconnect,
+  reconnect,
+  events,
+  isLive,
+  clearEvents,
+  latestByType,
+  filterByType,
+};
 }
 
 export default useWebSocket;
