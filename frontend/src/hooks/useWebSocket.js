@@ -104,7 +104,7 @@ export function useWebSocket({ path, onMessage, enabled = true }) {
     };
   }, [path, enabled, reconnectCount]);
 
-  return { connected, lastMessage, send, disconnect, reconnect };
+  return { connected,status, lastMessage, send, disconnect, reconnect };
 }
 
 export function useRealtimeSubscription(path, { enabled = true, onEvent } = {}) {
@@ -145,7 +145,6 @@ export function useRealtimeSubscription(path, { enabled = true, onEvent } = {}) 
 
   return {
     connected,
-    status,
     lastMessage,
     send,
     disconnect,
