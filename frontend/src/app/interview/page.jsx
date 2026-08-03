@@ -358,18 +358,7 @@ export default function InterviewPage() {
     )}
   </div>
 </Card>
-                ) : (
-                  feedback.map((f, i) => (
-                    <div
-                      key={i}
-                      className="rounded-md border border-border bg-bg-card px-3 py-2 text-xs text-zinc-300"
-                    >
-                      {f}
-                    </div>
-                  ))
-                )}
-              </div>
-            </Card>
+                
 
             <Card title="Session Info">
               <div className="space-y-2 text-sm">
