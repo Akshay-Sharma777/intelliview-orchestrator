@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 
 export function useWebSocket({ path, onMessage, enabled = true }) {
   const [connected, setConnected] = useState(false);
+  const [status, setStatus] = useState("disconnected");
   const [lastMessage, setLastMessage] = useState(null);
   const [reconnectCount, setReconnectCount] = useState(0);
   const wsRef = useRef(null);
@@ -62,6 +63,7 @@ export function useWebSocket({ path, onMessage, enabled = true }) {
             return;
           }
           setConnected(true);
+          setStatus("connected");
           retryRef.current = 0;
         };
 
@@ -76,10 +78,11 @@ export function useWebSocket({ path, onMessage, enabled = true }) {
           }
         };
 
-        ws.onerror = () => {};
+        ws.onerror = () => { };
 
         ws.onclose = () => {
           setConnected(false);
+          setStatus("reconnecting");
           wsRef.current = null;
           scheduleReconnect();
         };
@@ -142,11 +145,11 @@ export function useRealtimeSubscription(path, { enabled = true, onEvent } = {}) 
 
   return {
     connected,
-    isLive,
-    events,
-    clearEvents,
-    latestByType,
-    filterByType,
+    status,
+    lastMessage,
+    send,
+    disconnect,
+    reconnect,
   };
 }
 
