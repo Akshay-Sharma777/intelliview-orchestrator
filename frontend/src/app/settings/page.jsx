@@ -1,4 +1,5 @@
 "use client";
+import { startOnboardingTour } from "@/components/OnboardingTour";
 import { useState } from "react";
 import useSWR from "swr";
 import Card from "@/components/Card";
@@ -95,7 +96,7 @@ export default function SettingsPage() {
             <span className="text-xs text-muted">Secure</span>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="space-y-6">
             <Card title="API token" description="Required for worker management and protected endpoints.">
@@ -153,6 +154,25 @@ export default function SettingsPage() {
             </Card>
           </div>
 
+
+        <div className="rounded-lg border border-border bg-bg-panel p-5">
+          <h3 className="text-sm font-semibold text-zinc-100">
+            Onboarding Tour
+          </h3>
+
+          <p className="mt-1 text-sm text-muted">
+            Take a quick tour to learn about the main features of IntelliView.
+          </p>
+
+          <button
+            type="button"
+            onClick={startOnboardingTour}
+            className="mt-4 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+          >
+            Take Tour
+          </button>
+        </div>
+      </div>
           <div className="space-y-6">
             <Card title="Load balancing" description="Switch the active strategy at runtime.">
               {scheduling.error ? (
@@ -205,7 +225,7 @@ export default function SettingsPage() {
             </Card>
           </div>
         </div>
-      </div>
+
     </ErrorBoundary>
   );
 }
