@@ -935,7 +935,8 @@ description="Recruiter view of candidate interview results."
 >
 
 
-<table className="w-full text-sm">
+ <div className="overflow-x-auto">
+    <table className="w-full min-w-[600px] text-sm">
 
 
 <thead>
@@ -1074,10 +1075,9 @@ No candidates added yet.
 
 
 </table>
-
+</div>
 
 </Card>
-
 
 
 </div>
