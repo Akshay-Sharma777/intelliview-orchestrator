@@ -6,8 +6,8 @@ like `from database.models import InterviewSession` keep working.
 
 from sqlalchemy.sql import func  # noqa: F401
 
-from database.models.user import User
 from database.models.system_settings import SystemSettings
+from database.models.user import User
 
 __all__ = [
     "Base",

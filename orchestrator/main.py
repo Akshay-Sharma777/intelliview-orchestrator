@@ -67,11 +67,11 @@ from routers.candidates import create_candidate_routes
 from routers.health import create_health_routes
 from routers.metrics import router as metrics_router
 from routers.questions import create_question_routes
-from routers.settings import create_settings_routes
 from routers.sessions import (  # noqa: F401 (re-exported for tests)
     StartInterviewRequest,
     create_session_routes,
 )
+from routers.settings import create_settings_routes
 from routers.templates import create_template_routes
 from routers.workers import create_worker_routes
 
