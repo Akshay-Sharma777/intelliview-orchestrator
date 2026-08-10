@@ -12,7 +12,6 @@ from celery.signals import (
     task_postrun,
     task_prerun,
     worker_shutdown,
-    worker_shutting_down,
 )
 
 from config import WORKER_CONCURRENCY
@@ -63,14 +62,10 @@ def main() -> int:
 
     # Validate required configuration settings right at startup (Issue 1)
     required_settings = ["API_URL", "API_TOKEN"]
-    missing_settings = [
-        setting for setting in required_settings if not os.getenv(setting)
-    ]
+    missing_settings = [setting for setting in required_settings if not os.getenv(setting)]
 
     if missing_settings:
-        logger.error(
-            f"Startup failed: Missing required environment variables: {', '.join(missing_settings)}"
-        )
+        logger.error(f"Startup failed: Missing required environment variables: {', '.join(missing_settings)}")
         return 1
 
     start_worker_metrics()
@@ -108,7 +103,7 @@ def main() -> int:
     # accepting new tasks and waits for the current task to finish.
     # Put the agent into drain mode at the same moment so the orchestrator
     # also stops routing new work to this worker while it winds down.
-    @worker_shutting_down.connect
+    @worker_shutdown.connect
     def _on_worker_shutting_down(sig=None, how=None, exitcode=None, **kwargs):
         logger.info(
             "Celery %s shutdown initiated (signal=%s) — draining worker %s",
@@ -128,9 +123,7 @@ def main() -> int:
         if heartbeat_thread is not None:
             heartbeat_thread.join(timeout=10)
             if heartbeat_thread.is_alive():
-                logger.warning(
-                    "Heartbeat thread did not stop within timeout; continuing shutdown anyway"
-                )
+                logger.warning("Heartbeat thread did not stop within timeout; continuing shutdown anyway")
 
         agent.deregister()
 

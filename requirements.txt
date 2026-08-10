@@ -40,3 +40,4 @@ testcontainers
 
 #for hallucination_detector
 sentence-transformers
+locust
