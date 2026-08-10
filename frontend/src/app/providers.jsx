@@ -11,6 +11,7 @@ import { useUIStore } from "@/lib/ui-store";
 import { endpoints, api } from "@/lib/api";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
+import { NotificationProvider } from "@/lib/notification-context";
 
 const CommandPalette = lazy(() =>
   import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette })),
@@ -157,6 +158,7 @@ useEffect(() => {
         },
       }}
     >
+      <NotificationProvider>
       <ErrorBoundary>{children}</ErrorBoundary>
       <Suspense fallback={null}>
         <ScreenLockWrapper />
@@ -171,6 +173,7 @@ useEffect(() => {
           </Suspense>
         </MobileSidebar>
       </Suspense>
+      </NotificationProvider>
     </SWRConfig>
   );
 }
