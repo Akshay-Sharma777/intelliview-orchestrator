@@ -44,7 +44,4 @@ class SystemSettings(Base):
     )
 
     def __repr__(self):
-        return (
-            f"<SystemSettings(id={self.id}, "
-            f"company_name='{self.company_name}')>"
-        )
+        return f"<SystemSettings(id={self.id}, " f"company_name='{self.company_name}')>"
