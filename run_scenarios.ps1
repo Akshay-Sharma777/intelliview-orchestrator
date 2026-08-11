@@ -6,6 +6,11 @@ if (-not $env:TARGET_HOST) {
     exit 1
 }
 
+if (-not $env:LOAD_TEST_API_KEY) {
+    Write-Host "ERROR: Set LOAD_TEST_API_KEY to the API_TOKEN configured on the target server."
+    exit 1
+}
+
 New-Item -ItemType Directory -Force -Path "results" | Out-Null
 
 function Run-Scenario {
@@ -44,21 +49,26 @@ switch ($Scenario) {
     "10" {
         Run-Scenario 10 2 "3m"
     }
+
     "50" {
         Run-Scenario 50 5 "5m"
     }
+
     "100" {
         Run-Scenario 100 10 "5m"
     }
+
     "500" {
         Run-Scenario 500 25 "10m"
     }
+
     "all" {
         Run-Scenario 10 2 "3m"
         Run-Scenario 50 5 "5m"
         Run-Scenario 100 10 "5m"
         Run-Scenario 500 25 "10m"
     }
+
     default {
         Write-Host "Unknown scenario '$Scenario'. Use one of: 10 50 100 500 all"
         exit 1
