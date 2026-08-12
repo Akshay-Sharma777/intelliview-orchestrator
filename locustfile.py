@@ -1,154 +1,9 @@
-"""
-locustfile.py — Load test for the AI Interview Orchestrator
-=============================================================
-
-WHAT THIS SIMULATES
---------------------
-A single "virtual candidate" runs a realistic interview session end-to-end
-against the real orchestrator API (routers/sessions.py), not a single
-hammered endpoint:
-
-    0. POST /candidates                        -> register as a real
-                                                    candidate (REQUIRED —
-                                                    see CANDIDATE
-                                                    REGISTRATION below)
-    1. POST /start-interview                  -> create a session
-                                                   (status starts at QUEUED)
-    2. GET  /session-status/{session_id}       -> poll until the pipeline
-                                                   has picked it up
-    3. Repeat N times, with think-time between:
-         POST /interviews/ask-question         -> get next question
-         POST /interviews/submit-answer        -> answer it
-    4. GET  /session-status/{session_id}       -> final status check
-
-CANDIDATE REGISTRATION — WHY STEP 0 EXISTS
-----------------------------------------------
-Confirmed by running this test against the real API:
-interview_sessions.candidate_id has a foreign key constraint against
-candidates.candidate_id. A made-up candidate_id (e.g. "loadtest-12345")
-fails EVERY /start-interview call with a 500
-(psycopg2.errors.ForeignKeyViolation) — the interview pipeline itself
-never gets exercised. Each simulated user now registers via
-POST /candidates in on_start() and uses the server-assigned
-candidate_id for its interviews. If registration itself fails (e.g.
-rate limited), the user retries it before attempting an interview
-rather than sending requests that are guaranteed to fail.
-
-NOTE ON "COMPLETING" A SESSION
--------------------------------
-This API has no client-facing "complete" endpoint. Sessions move through
-CREATED -> QUEUED -> VIDEO_PROCESSING -> AUDIO_PROCESSING -> EVALUATING ->
-COMPLETED automatically once the backend pipeline picks them up (see
-InterviewSession.status check constraint in database/models). So a
-"completed" interview here just means: the candidate finished submitting
-answers and the orchestrator will finish processing asynchronously. The
-final status poll records whatever state the session is actually in when
-the candidate is done — that's the realistic behavior to measure.
-
-AUTH
-----
-Confirmed from orchestrator/security.py: get_current_user accepts EITHER
-a JWT Bearer token OR a legacy `X-API-Token` header that must exactly
-match the server's API_TOKEN env var (grants role "admin"). This load
-test uses the legacy X-API-Token path — it's a single static value with
-no login flow required, which is what a load test needs. Set it via
-LOAD_TEST_API_KEY (must equal whatever API_TOKEN is set to on the
-server you're testing).
-
-/retry-session/{id} and /detect-failures additionally require the
-"admin" role via require_role("admin") — the X-API-Token path already
-grants that role, so no extra config needed if you add those endpoints
-to the test later.
-
-RATE LIMITING — READ THIS BEFORE TRUSTING THE 50/100/500-USER RESULTS
-------------------------------------------------------------------------
-CONFIRMED from orchestrator/rate_limiter.py: the limit key is
-`f"{client_ip}:{x_api_token}"` — IP address + API token, not per
-simulated user. Locust runs all virtual users from ONE machine (one
-IP) using the SAME X-API-Token (there's only one valid token), so
-every simulated candidate shares a single rate-limit bucket:
-60 requests per 60 seconds for the ENTIRE test, regardless of whether
-you run 10 or 500 concurrent users.
-
-Practical effect: past a certain point (roughly 60 requests/min across
-ALL virtual users combined), you will see a wall of 429 responses.
-This is NOT a backend capacity finding — it's the rate limiter
-correctly doing its job against what looks like one client. Reading
-"the system caps out around 60 req/min" from this test would be wrong
-and would mask the real capacity of the interview pipeline behind it.
-
-This script tags 429s as "rate_limited" (see catch_response calls
-below) so they show up as a distinct, filterable category in
-<prefix>_failures.csv — do not read them as the same kind of failure
-as a 500 or a timeout.
-
-To actually measure backend capacity past ~60 req/min, do ONE of:
-  1. Ask whoever owns the rate limiter config to raise or disable the
-     limit on the staging environment for the duration of the test
-     (cleanest option — this is what the issue is actually asking for).
-  2. Run Locust in distributed mode (--master / --worker) across
-     multiple machines with different IPs, so the client_key differs
-     per machine. Still caps at 60 req/min per machine.
-  3. If the team decides the rate limiter itself is part of what's
-     being tested, keep it as-is and report the 429 wall as the actual
-     finding: "concurrent-candidate capacity is bottlenecked by a
-     global rate limiter, not by the interview pipeline, at N req/min."
-This is a decision for the team, not something this script can resolve
-on its own — flag it in your results writeup either way.
-
-CONFIGURE FOR YOUR API
------------------------
-Edit the CONFIG block below if paths or auth change.
-
-HOW TO RUN
-----------
-    pip install locust
-
-PowerShell (Windows / VS Code terminal):
-    $env:TARGET_HOST = "https://staging.example.com"
-    $env:LOAD_TEST_API_KEY = "your-token"     # if auth is required
-    .\run_scenarios.ps1 10                    # smoke test first
-    .\run_scenarios.ps1 50
-    .\run_scenarios.ps1 100
-    .\run_scenarios.ps1 500
-
-bash/zsh (Mac/Linux/WSL):
-    export TARGET_HOST="https://staging.example.com"
-    export LOAD_TEST_API_KEY="your-token"
-    ./run_scenarios.sh 10
-
-Or call Locust directly for one scenario:
-    locust -f locustfile.py --host $env:TARGET_HOST `
-        --users 10 --spawn-rate 2 --run-time 3m `
-        --csv=results/10users --html=results/10users.html --headless
-
-WHAT GETS RECORDED
--------------------
---csv writes <prefix>_stats.csv, <prefix>_stats_history.csv, and
-<prefix>_failures.csv (per-endpoint counts, response times, failure
-types). --html writes a self-contained report with charts. A summary
-(median/p95/p99/failure rate) also prints to the console at the end of
-every run, and the process exits non-zero if the failure rate crosses
-LOAD_TEST_MAX_FAILURE_RATE (default 5%), so this can gate CI later.
-"""
 
 import os
 import random
 
 from locust import HttpUser, task, between, events
 
-
-# --------------------------------------------------------------------------
-# CONFIG
-# --------------------------------------------------------------------------
-
-# Set via: $env:LOAD_TEST_API_KEY = "..."  (PowerShell)  or
-#          export LOAD_TEST_API_KEY="..."  (bash)
-# Must exactly match the server's API_TOKEN env var (legacy X-API-Token
-# auth path in orchestrator/security.py — grants role "admin"). Left
-# blank, requests go out unauthenticated and /start-interview will 401
-# (that's expected and tells you the token wasn't set — not a capacity
-# problem).
 API_TOKEN = os.environ.get("LOAD_TEST_API_KEY", "")
 
 CREATE_CANDIDATE_PATH = "/candidates"
@@ -157,18 +12,11 @@ SESSION_STATUS_PATH = "/session-status/{session_id}"
 ASK_QUESTION_PATH = "/interviews/ask-question"
 SUBMIT_ANSWER_PATH = "/interviews/submit-answer"
 
-# How many question/answer turns a simulated candidate does per interview.
-MIN_ANSWERS_PER_INTERVIEW = 3
 MAX_ANSWERS_PER_INTERVIEW = 8
 
-# Think-time before each answer (seconds) — mimics a candidate reading
-# the question and typing a response, not hammering the endpoint.
 MIN_THINK_TIME = 3
 MAX_THINK_TIME = 20
 
-# How long / how often to poll session-status right after creation,
-# before starting to ask questions (gives the scheduler a moment to
-# pick the task up — mirrors real client polling behavior).
 POST_CREATE_POLL_INTERVAL = 1.0
 POST_CREATE_MAX_POLLS = 5
 
@@ -199,15 +47,7 @@ def _headers():
 
 
 def _is_rate_limited(resp) -> bool:
-    """
-    Tag 429s distinctly so they never get silently averaged in with real
-    errors (500s, timeouts, bad payloads). See the RATE LIMITING section
-    at the top of this file — with a shared IP + shared API token, every
-    virtual user shares one rate-limit bucket, so 429s past ~60 req/min
-    are expected middleware behavior, not a backend failure. Reporting
-    them under a distinct "rate_limited:" prefix lets you filter them
-    out of <prefix>_failures.csv when judging real error rate.
-    """
+    
     if resp.status_code == 429:
         retry_after = resp.headers.get("Retry-After", "?")
         resp.failure(f"rate_limited: 429, retry_after={retry_after}s")
@@ -215,29 +55,11 @@ def _is_rate_limited(resp) -> bool:
     return False
 
 
-# --------------------------------------------------------------------------
-# User behavior
-# --------------------------------------------------------------------------
-
 class InterviewCandidate(HttpUser):
-    """One instance = one simulated candidate running a full interview."""
 
-    # Pause between full interview sessions.
     wait_time = between(2, 6)
 
     def on_start(self):
-        """
-        Register a real candidate before running any interviews.
-
-        REQUIRED: /start-interview's candidate_id must reference an
-        existing row in the candidates table (foreign key constraint
-        interview_sessions_candidate_id_fkey). Made-up candidate_ids fail
-        every single interview with a 500 (psycopg2.errors.
-        ForeignKeyViolation) — confirmed against a real run of this API.
-        If registration fails here, candidate_id stays None and
-        run_full_interview skips the user's interview attempts rather
-        than generating guaranteed-broken requests.
-        """
         self.candidate_seq = random.randint(100000, 999999)
         self.candidate_id = None
         self.candidate_id = self._register_candidate()
@@ -277,9 +99,7 @@ class InterviewCandidate(HttpUser):
     @task
     def run_full_interview(self):
         if self.candidate_id is None:
-            # Registration failed in on_start (or during a rate-limited
-            # window) — retry it here rather than sending interview
-            # requests that are guaranteed to fail the FK constraint.
+            
             self.candidate_id = self._register_candidate()
             if self.candidate_id is None:
                 return
@@ -303,8 +123,6 @@ class InterviewCandidate(HttpUser):
                 break
 
         self._final_status_check(session_id)
-
-    # ---- individual steps -------------------------------------------------
 
     def _start_interview(self):
         payload = {
@@ -380,8 +198,6 @@ class InterviewCandidate(HttpUser):
             if _is_rate_limited(resp):
                 return None
             if resp.status_code == 404:
-                # No more questions available — expected end-of-interview
-                # condition, not a system failure.
                 resp.success()
                 return None
             if resp.status_code != 200:
@@ -431,20 +247,13 @@ class InterviewCandidate(HttpUser):
                 resp.failure(f"final status check failed: HTTP {resp.status_code}")
             else:
                 resp.success()
-
-
-# --------------------------------------------------------------------------
-# Custom summary printed at the end of every run.
-# --------------------------------------------------------------------------
-
+                
 @events.quitting.add_listener
 def _print_summary(environment, **kwargs):
     stats = environment.stats
     total = stats.total
 
-    # Separate rate-limited failures (tagged "rate_limited: ..." by
-    # _is_rate_limited) from real errors, so the headline failure rate
-    # isn't inflated by the shared IP+token rate-limit bucket.
+    
     rate_limited_count = 0
     other_failure_count = 0
     for key, err in stats.errors.items():
