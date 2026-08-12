@@ -34,6 +34,7 @@ import { Skeleton, ErrorState } from "@/components/States";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { exportAnalyticsCSV } from "@/lib/export";
 
 
 
@@ -507,7 +508,7 @@ const dlq=useSWR(
 
 
 const completed=useSWR(
-"/completed-sessions?limit=100",
+"/completed-sessions?limit=10000",
 {
  refreshInterval:10000
 }
@@ -515,7 +516,7 @@ const completed=useSWR(
 
 
 const failed=useSWR(
-"/failed-sessions?limit=100",
+"/failed-sessions?limit=10000",
 {
  refreshInterval:10000
 }
@@ -594,50 +595,27 @@ dateRange
 
   const handleExport = useCallback(()=>{
 
+    if (candidates.length > 0) {
+      // Export recruiter dashboard candidates
+      exportAnalyticsCSV({ 
+        candidates, 
+        stats: stats.data, 
+        faults: faults.data 
+      });
+      toast.success("Export complete");
+    } else if (stats.data) {
+      // Export analytics statistics
+      exportAnalyticsCSV({ 
+        candidates: [], 
+        stats: stats.data, 
+        faults: faults.data 
+      });
+      toast.success("Export complete");
+    } else {
+      toast.error("No data to export");
+    }
 
-    const csv=[
-
-      "candidate,role,status,score,risk",
-
-      ...candidates.map(c=>
-
-        `${c.name},${c.role},${c.status},${c.score},${c.risk}`
-
-      )
-
-    ].join("\n");
-
-
-
-    const blob=new Blob(
-      [csv],
-      {
-        type:"text/csv"
-      }
-    );
-
-
-    const url=URL.createObjectURL(blob);
-
-
-    const a=document.createElement("a");
-
-    a.href=url;
-
-    a.download="candidate-export.csv";
-
-    a.click();
-
-
-    URL.revokeObjectURL(url);
-
-
-    toast.success(
-      "Export complete"
-    );
-
-
-  },[candidates]);
+  },[candidates, stats.data, faults.data]);
 
 
 
