@@ -51,7 +51,20 @@ export default function SchedulePage() {
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const candidates = candidateData?.candidates || [];
+  const sampleCandidates = [
+    { id: "cand-101", name: "Jyoshna Sankarapu (Candidate)", email: "jyoshna@example.com" },
+    { id: "cand-102", name: "Alice Johnson", email: "alice.johnson@example.com" },
+    { id: "cand-103", name: "Bob Smith", email: "bob.smith@example.com" },
+    { id: "cand-104", name: "Carol Danvers", email: "carol.danvers@example.com" },
+    { id: "cand-105", name: "David Miller", email: "david.miller@example.com" },
+  ];
+
+  const candidates = (candidateData?.candidates && candidateData.candidates.length > 0)
+    ? candidateData.candidates
+    : (Array.isArray(candidateData) && candidateData.length > 0)
+      ? candidateData
+      : sampleCandidates;
+
   const rawSchedules = scheduleData?.schedules || [];
 
   // Filtered schedules
