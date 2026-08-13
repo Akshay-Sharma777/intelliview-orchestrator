@@ -1,4 +1,12 @@
 "use client";
+import {
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+} from "@/components/ui/table";
 import { useState, useMemo } from "react";
 import useSWR from "swr";
 import { Cpu, Server, Activity } from "lucide-react";
