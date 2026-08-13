@@ -1,6 +1,6 @@
 # Frontend (Next.js)
 
-Dashboard UI for the AI Interview Orchestrator.
+Dashboard UI for the AI Interview Orchestrator. 
 
 ## Quick start (local dev)
 
