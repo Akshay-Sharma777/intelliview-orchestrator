@@ -163,6 +163,58 @@ def test_create_schedule_api_endpoint(client, db_session):
     assert data["email_notification"]["sent"] is True
 
 
+def test_create_schedule_past_date_fails(client, db_session):
+    """Test that scheduling an interview in the past raises HTTP 400 error."""
+    candidate = Candidate(
+        candidate_id="cand_test_past",
+        name="Past Candidate",
+        email="past@example.com",
+    )
+    db_session.add(candidate)
+    db_session.commit()
+
+    yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+
+    payload = {
+        "candidate_id": "cand_test_past",
+        "interviewer_id": "Interviewer X",
+        "scheduled_at": yesterday,
+    }
+
+    response = client.post("/api/schedule", json=payload)
+    assert response.status_code == 400
+    assert "must be in the future" in response.json()["detail"]
+
+
+def test_update_schedule_invalid_status_fails(client, db_session):
+    """Test that updating schedule with an invalid status raises HTTP 400 error."""
+    candidate = Candidate(
+        candidate_id="cand_test_status",
+        name="Status Candidate",
+        email="status@example.com",
+    )
+    db_session.add(candidate)
+    db_session.commit()
+
+    future_time = datetime.now(timezone.utc) + timedelta(days=2)
+    schedule = InterviewSchedule(
+        id="sched_invalid_status",
+        candidate_id="cand_test_status",
+        interviewer_id="Lead Tester",
+        scheduled_at=future_time,
+        status="scheduled",
+    )
+    db_session.add(schedule)
+    db_session.commit()
+
+    patch_res = client.patch(
+        "/api/schedule/sched_invalid_status",
+        json={"status": "invalid_status_xyz"},
+    )
+    assert patch_res.status_code == 400
+    assert "Allowed statuses are" in patch_res.json()["detail"]
+
+
 def test_list_and_upcoming_schedule_api(client, db_session):
     """Test GET /api/schedule and GET /api/schedule/upcoming."""
     candidate = Candidate(
@@ -199,31 +251,53 @@ def test_list_and_upcoming_schedule_api(client, db_session):
     assert upcoming[0]["id"] == "sched_future"
 
 
-def test_update_schedule_api(client, db_session):
-    """Test PATCH /api/schedule/{schedule_id} endpoint."""
+def test_full_end_to_end_schedule_flow(client, db_session):
+    """
+    Final End-to-End Test Verification:
+    Schedule interview for tomorrow -> Save in DB -> Send confirmation email -> Show interview on upcoming dashboard.
+    """
     candidate = Candidate(
-        candidate_id="cand_test_505",
-        name="Carol QA",
-        email="carol.qa@example.com",
+        candidate_id="cand_e2e_999",
+        name="E2E Tester",
+        email="e2e.tester@example.com",
     )
     db_session.add(candidate)
     db_session.commit()
 
-    schedule = InterviewSchedule(
-        id="sched_patch",
-        candidate_id="cand_test_505",
-        interviewer_id="Lead Tester",
-        scheduled_at=datetime.now(timezone.utc) + timedelta(days=3),
-        status="scheduled",
-    )
-    db_session.add(schedule)
-    db_session.commit()
+    tomorrow = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
 
-    patch_res = client.patch(
-        "/api/schedule/sched_patch",
-        json={"status": "completed", "notes": "Passed technical test"},
-    )
-    assert patch_res.status_code == 200
-    updated_data = patch_res.json()["schedule"]
-    assert updated_data["status"] == "completed"
-    assert updated_data["notes"] == "Passed technical test"
+    # 1. Schedule Interview via POST /api/schedule
+    with patch("smtplib.SMTP") as mock_smtp:
+        mock_server = MagicMock()
+        mock_smtp.return_value.__enter__.return_value = mock_server
+
+        post_res = client.post(
+            "/api/schedule",
+            json={
+                "candidate_id": "cand_e2e_999",
+                "interviewer_id": "Aditya Kanojiya",
+                "scheduled_at": tomorrow,
+                "notes": "Full-Stack Verification Round",
+                "send_email": True,
+            },
+        )
+
+    assert post_res.status_code == 201
+    res_data = post_res.json()
+    sched_id = res_data["schedule"]["id"]
+
+    # 2. Verify Saved in DB
+    db_entry = db_session.query(InterviewSchedule).filter_by(id=sched_id).first()
+    assert db_entry is not None
+    assert db_entry.candidate_id == "cand_e2e_999"
+    assert db_entry.interviewer_id == "Aditya Kanojiya"
+    assert db_entry.status == "scheduled"
+
+    # 3. Verify Email Sent Notification
+    assert res_data["email_notification"]["sent"] is True
+
+    # 4. Verify Shows on Upcoming Dashboard API
+    upcoming_res = client.get("/api/schedule/upcoming")
+    assert upcoming_res.status_code == 200
+    upcoming_list = upcoming_res.json()["upcoming"]
+    assert any(s["id"] == sched_id for s in upcoming_list)

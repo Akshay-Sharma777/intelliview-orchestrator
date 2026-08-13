@@ -3,6 +3,7 @@ Email Notification Service using smtplib.
 Sends email notifications for scheduled interviews and other events.
 """
 
+import html
 import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -35,7 +36,7 @@ class EmailService:
         Args:
             candidate_name: Name of the candidate
             candidate_email: Email address of the candidate
-            interview_date: Date string (e.g., "2026-08-12")
+            interview_date: Date string (e.g., "August 12, 2026")
             interview_time: Time string (e.g., "10:00 AM UTC")
             interviewer_name: Name/ID of the assigned interviewer
             schedule_id: Unique schedule ID
@@ -48,7 +49,16 @@ class EmailService:
         host = self.settings.smtp_host or "localhost"
         port = self.settings.smtp_port or 1025
 
-        subject = f"Interview Scheduled: AI Interview Session ({interview_date})"
+        # Sanitize HTML inputs to prevent injection vulnerabilities
+        safe_name = html.escape(candidate_name)
+        safe_email = html.escape(candidate_email)
+        safe_date = html.escape(interview_date)
+        safe_time = html.escape(interview_time)
+        safe_interviewer = html.escape(interviewer_name)
+        safe_sched_id = html.escape(schedule_id)
+        safe_notes = html.escape(notes) if notes else ""
+
+        subject = f"Interview Scheduled: AI Interview Session ({safe_date})"
 
         # Plain text fallback
         text_body = f"""Dear {candidate_name},
@@ -80,10 +90,6 @@ IntelliView Interview Team
     .card {{ max-width: 600px; margin: 0 auto; background-color: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 28px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }}
     .header {{ border-bottom: 1px solid #27272a; padding-bottom: 16px; margin-bottom: 20px; }}
     .header h2 {{ color: #6366f1; margin: 0; font-size: 22px; }}
-    .detail-row {{ display: flex; margin-bottom: 12px; font-size: 15px; }}
-    .label {{ font-weight: 600; color: #a1a1aa; width: 140px; shrink: 0; }}
-    .value {{ color: #f4f4f5; font-weight: 500; }}
-    .badge {{ display: inline-block; background-color: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; }}
     .footer {{ margin-top: 24px; border-top: 1px solid #27272a; padding-top: 16px; font-size: 12px; color: #71717a; text-align: center; }}
   </style>
 </head>
@@ -94,32 +100,32 @@ IntelliView Interview Team
       <p style="color: #a1a1aa; font-size: 14px; margin-top: 4px;">Your AI technical interview has been scheduled.</p>
     </div>
 
-    <p style="font-size: 15px;">Dear <strong>{candidate_name}</strong>,</p>
+    <p style="font-size: 15px;">Dear <strong>{safe_name}</strong>,</p>
     <p style="font-size: 14px; color: #d4d4d8;">We are pleased to invite you to your upcoming technical interview session. Below are the details:</p>
 
     <div style="background-color: #27272a; border-radius: 8px; padding: 16px; margin: 20px 0;">
       <table style="width: 100%; border-collapse: collapse;">
         <tr>
           <td style="padding: 6px 0; color: #a1a1aa; font-size: 14px; width: 130px;">Schedule ID:</td>
-          <td style="padding: 6px 0; color: #f4f4f5; font-size: 14px; font-family: monospace;">{schedule_id}</td>
+          <td style="padding: 6px 0; color: #f4f4f5; font-size: 14px; font-family: monospace;">{safe_sched_id}</td>
         </tr>
         <tr>
           <td style="padding: 6px 0; color: #a1a1aa; font-size: 14px;">Candidate:</td>
-          <td style="padding: 6px 0; color: #f4f4f5; font-size: 14px;"><strong>{candidate_name}</strong> ({candidate_email})</td>
+          <td style="padding: 6px 0; color: #f4f4f5; font-size: 14px;"><strong>{safe_name}</strong> ({safe_email})</td>
         </tr>
         <tr>
           <td style="padding: 6px 0; color: #a1a1aa; font-size: 14px;">Date:</td>
-          <td style="padding: 6px 0; color: #38bdf8; font-size: 14px; font-weight: 600;">{interview_date}</td>
+          <td style="padding: 6px 0; color: #38bdf8; font-size: 14px; font-weight: 600;">{safe_date}</td>
         </tr>
         <tr>
           <td style="padding: 6px 0; color: #a1a1aa; font-size: 14px;">Time:</td>
-          <td style="padding: 6px 0; color: #38bdf8; font-size: 14px; font-weight: 600;">{interview_time}</td>
+          <td style="padding: 6px 0; color: #38bdf8; font-size: 14px; font-weight: 600;">{safe_time}</td>
         </tr>
         <tr>
           <td style="padding: 6px 0; color: #a1a1aa; font-size: 14px;">Interviewer:</td>
-          <td style="padding: 6px 0; color: #f4f4f5; font-size: 14px;">{interviewer_name}</td>
+          <td style="padding: 6px 0; color: #f4f4f5; font-size: 14px;">{safe_interviewer}</td>
         </tr>
-        {f'<tr><td style="padding: 6px 0; color: #a1a1aa; font-size: 14px;">Notes:</td><td style="padding: 6px 0; color: #e4e4e7; font-size: 14px;">{notes}</td></tr>' if notes else ''}
+        {f'<tr><td style="padding: 6px 0; color: #a1a1aa; font-size: 14px;">Notes:</td><td style="padding: 6px 0; color: #e4e4e7; font-size: 14px;">{safe_notes}</td></tr>' if safe_notes else ''}
       </table>
     </div>
 
@@ -143,20 +149,31 @@ IntelliView Interview Team
 
         try:
             logger.info(
-                f"Attempting to send email via SMTP to {candidate_email} via {host}:{port}"
+                f"Attempting to send email via SMTP to candidate via {host}:{port}"
             )
-            with smtplib.SMTP(host=host, port=port, timeout=10) as server:
-                if self.settings.smtp_use_tls:
-                    server.starttls()
-                if self.settings.smtp_user and self.settings.smtp_password:
-                    server.login(self.settings.smtp_user, self.settings.smtp_password)
-                server.send_message(message)
+            # Use SSL if port 465, otherwise standard SMTP with optional TLS
+            if port == 465:
+                with smtplib.SMTP_SSL(host=host, port=port, timeout=10) as server:
+                    if self.settings.smtp_user and self.settings.smtp_password:
+                        server.login(
+                            self.settings.smtp_user, self.settings.smtp_password
+                        )
+                    server.send_message(message)
+            else:
+                with smtplib.SMTP(host=host, port=port, timeout=10) as server:
+                    if self.settings.smtp_use_tls:
+                        server.starttls()
+                    if self.settings.smtp_user and self.settings.smtp_password:
+                        server.login(
+                            self.settings.smtp_user, self.settings.smtp_password
+                        )
+                    server.send_message(message)
 
-            logger.info(f"Email notification successfully sent to {candidate_email}")
+            logger.info("Email notification successfully dispatched.")
             return True, "Email sent successfully"
 
         except Exception as e:
-            error_msg = f"Failed to send email notification to {candidate_email}: {e!s}"
+            error_msg = f"Failed to send email notification: {e!s}"
             logger.warning(error_msg)
             return False, error_msg
 

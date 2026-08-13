@@ -17,6 +17,8 @@ from orchestrator.email_service import email_service
 
 logger = logging.getLogger(__name__)
 
+ALLOWED_STATUSES = {"scheduled", "completed", "cancelled", "rescheduled"}
+
 
 class CreateScheduleRequest(BaseModel):
     """Payload for creating a new interview schedule."""
@@ -58,6 +60,7 @@ def create_schedule_routes() -> APIRouter:
     ):
         """
         Create a new interview schedule and trigger an email notification to the candidate.
+        Validates future date/time and candidate existence.
         """
         try:
             # Check candidate existence
@@ -71,10 +74,18 @@ def create_schedule_routes() -> APIRouter:
                     detail=f"Candidate with ID '{payload.candidate_id}' not found.",
                 )
 
-            # Format UTC or timezone-aware datetime
+            # Ensure datetime is timezone-aware
             scheduled_at = payload.scheduled_at
             if scheduled_at.tzinfo is None:
                 scheduled_at = scheduled_at.replace(tzinfo=timezone.utc)
+
+            # Validate that scheduled_at is in the future
+            now_utc = datetime.now(timezone.utc)
+            if scheduled_at <= now_utc:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Scheduled date and time must be in the future.",
+                )
 
             # Create Schedule ORM entry
             schedule = InterviewSchedule(
@@ -151,7 +162,8 @@ def create_schedule_routes() -> APIRouter:
             if candidate_id:
                 stmt = stmt.where(InterviewSchedule.candidate_id == candidate_id)
             if status:
-                stmt = stmt.where(InterviewSchedule.status == status)
+                clean_status = status.strip().lower()
+                stmt = stmt.where(InterviewSchedule.status == clean_status)
 
             stmt = stmt.order_by(InterviewSchedule.scheduled_at.asc()).limit(limit)
             results = db.execute(stmt).all()
@@ -266,7 +278,7 @@ def create_schedule_routes() -> APIRouter:
         payload: UpdateScheduleRequest,
         db: Session = Depends(get_db),
     ):
-        """Update interview schedule status or datetime."""
+        """Update interview schedule status or datetime with strict validation."""
         try:
             schedule = db.execute(
                 select(InterviewSchedule).where(InterviewSchedule.id == schedule_id)
@@ -275,14 +287,31 @@ def create_schedule_routes() -> APIRouter:
             if not schedule:
                 raise HTTPException(status_code=404, detail="Schedule not found")
 
+            # Validate status input
             if payload.status:
-                schedule.status = payload.status
+                clean_status = payload.status.strip().lower()
+                if clean_status not in ALLOWED_STATUSES:
+                    allowed_str = ", ".join(sorted(ALLOWED_STATUSES))
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid status '{payload.status}'. Allowed statuses are: {allowed_str}",
+                    )
+                schedule.status = clean_status
+
             if payload.notes is not None:
                 schedule.notes = payload.notes
+
+            # Validate future datetime
             if payload.scheduled_at:
                 sched_at = payload.scheduled_at
                 if sched_at.tzinfo is None:
                     sched_at = sched_at.replace(tzinfo=timezone.utc)
+                now_utc = datetime.now(timezone.utc)
+                if sched_at <= now_utc:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Scheduled date and time must be in the future.",
+                    )
                 schedule.scheduled_at = sched_at
 
             db.commit()

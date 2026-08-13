@@ -239,10 +239,12 @@ export default function SchedulePage() {
                   <input
                     type="datetime-local"
                     value={scheduledAt}
+                    min={new Date().toISOString().slice(0, 16)}
                     onChange={(e) => setScheduledAt(e.target.value)}
                     required
                     className="w-full bg-zinc-800/90 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
+
                 </div>
               </div>
 
