@@ -794,6 +794,7 @@ def calculate_evaluation_risk_score(results: dict[str, Any]) -> float:
     score = quality_risk + accuracy_risk + clarity_risk + hallucination_risk
     return round(min(score, 1.0), 3)
 
+
 def generate_summary_report(session_data: dict[str, Any]) -> dict[str, Any] | None:
     """Generate a comprehensive AI-written interview summary report using Gemini."""
 
@@ -851,13 +852,9 @@ Requirements:
             recommendation = "Maybe"
 
         return {
-            "overall_rating": round(
-                float(report.get("overall_rating", 0)), 1
-            ),
+            "overall_rating": round(float(report.get("overall_rating", 0)), 1),
             "key_strengths": report.get("key_strengths", []),
-            "areas_for_improvement": report.get(
-                "areas_for_improvement", []
-            ),
+            "areas_for_improvement": report.get("areas_for_improvement", []),
             "hire_recommendation": recommendation,
             "comparison_to_other_candidates": report.get(
                 "comparison_to_other_candidates", ""
