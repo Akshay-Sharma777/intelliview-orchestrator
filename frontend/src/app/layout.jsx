@@ -1,4 +1,3 @@
-import { Inter } from "next/font/google";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import { ClientProviders } from "./providers";
@@ -6,10 +5,10 @@ import WebVitals from "@/components/WebVitals";
 import "./globals.css";
 import { jsx, jsxs } from "react/jsx-runtime";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
+// Using a system-font stack instead of next/font/google("Inter") so the
+// production build never depends on reaching fonts.googleapis.com. That
+// remote fetch was making CI builds fail intermittently (NextFontError).
+const inter = { variable: "" };
 
 const metadata = {
   title: "AI-Intelliview Orchestrator",
