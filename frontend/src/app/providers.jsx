@@ -12,6 +12,7 @@ import { useUIStore } from "@/lib/ui-store";
 import { endpoints, api } from "@/lib/api";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
+import { NotificationProvider } from "@/lib/notification-context";
 
 const CommandPalette = lazy(() =>
   import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette })),
@@ -146,23 +147,20 @@ useEffect(() => {
 
   return (
     <SWRConfig
-     value={{
-    fetcher: swrFetcher,
-    revalidateOnFocus: true,
-    refreshInterval: 5000,
-    shouldRetryOnError: false,
-    dedupingInterval: 2000,
-    errorRetryInterval: 8000,
-    onError: (err) => {
-      console.warn("[SWR]", err.message);
-    },
-  }}
->
-  <OnboardingTour />
-
-  {children}
-
-
+value={{
+        fetcher: swrFetcher,
+        revalidateOnFocus: true,
+        refreshInterval: 5000,
+        shouldRetryOnError: false,
+        dedupingInterval: 2000,
+        errorRetryInterval: 8000,
+        onError: (err) => {
+          console.warn("[SWR]", err.message);
+        },
+      }}
+    >
+      <NotificationProvider>
+        <OnboardingTour />
       <ErrorBoundary>{children}</ErrorBoundary>
       <Suspense fallback={null}>
         <ScreenLockWrapper />
@@ -177,6 +175,7 @@ useEffect(() => {
           </Suspense>
         </MobileSidebar>
       </Suspense>
+      </NotificationProvider>
     </SWRConfig>
   );
 }
