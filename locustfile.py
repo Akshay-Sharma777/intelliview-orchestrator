@@ -1,7 +1,7 @@
 import os
 import random
 
-from locust import HttpUser, task, between, events
+from locust import HttpUser, between, events, task
 
 API_TOKEN = os.environ.get("LOAD_TEST_API_KEY", "")
 
