@@ -239,10 +239,10 @@ def _build_session_report_pdf(session_data: dict) -> Response:
 
     # Title
     title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
+        "CustomTitle",
+        parent=styles["Heading1"],
         fontSize=20,
-        textColor=colors.HexColor('#1a1a1a'),
+        textColor=colors.HexColor("#1a1a1a"),
         spaceAfter=30,
         alignment=TA_CENTER
     )
@@ -251,10 +251,10 @@ def _build_session_report_pdf(session_data: dict) -> Response:
 
     # Session Information
     heading_style = ParagraphStyle(
-        'SectionHeading',
-        parent=styles['Heading2'],
+        "SectionHeading",
+        parent=styles["Heading2"],
         fontSize=14,
-        textColor=colors.HexColor('#333333'),
+        textColor=colors.HexColor("#333333"),
         spaceAfter=10
     )
     story.append(Paragraph("Session Information", heading_style))
