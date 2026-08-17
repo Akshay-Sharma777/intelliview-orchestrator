@@ -1,12 +1,10 @@
 """Unit and API tests for PDF export functionality."""
 
-import io
 from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-from database.db import get_db
 from orchestrator.main import app
 from routers.sessions import _build_risk_report_pdf, _build_session_report_pdf
 
