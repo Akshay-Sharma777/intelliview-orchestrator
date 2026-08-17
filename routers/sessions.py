@@ -225,7 +225,13 @@ def _build_session_report_pdf(session_data: dict) -> Response:
         from reportlab.lib.pagesizes import letter
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import inch
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.platypus import (
+            SimpleDocTemplate,
+            Paragraph,
+            Spacer,
+            Table,
+            TableStyle,
+        )
         from reportlab.lib import colors
         from reportlab.lib.enums import TA_CENTER, TA_LEFT
     except ImportError:
@@ -244,7 +250,7 @@ def _build_session_report_pdf(session_data: dict) -> Response:
         fontSize=20,
         textColor=colors.HexColor("#1a1a1a"),
         spaceAfter=30,
-        alignment=TA_CENTER
+        alignment=TA_CENTER,
     )
     story.append(Paragraph("Interview Session Report", title_style))
     story.append(Spacer(1, 0.2 * inch))
@@ -255,7 +261,7 @@ def _build_session_report_pdf(session_data: dict) -> Response:
         parent=styles["Heading2"],
         fontSize=14,
         textColor=colors.HexColor("#333333"),
-        spaceAfter=10
+        spaceAfter=10,
     )
     story.append(Paragraph("Session Information", heading_style))
 
@@ -271,17 +277,21 @@ def _build_session_report_pdf(session_data: dict) -> Response:
         ["Updated:", str(session_data.get("updated_at", "N/A"))],
     ]
 
-    session_table = Table(session_info, colWidths=[2*inch, 4*inch])
-    session_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f0f0f0')),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey)
-    ]))
+    session_table = Table(session_info, colWidths=[2 * inch, 4 * inch])
+    session_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f0f0f0")),
+                ("TEXTCOLOR", (0, 0), (-1, -1), colors.black),
+                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ]
+        )
+    )
     story.append(session_table)
     story.append(Spacer(1, 0.3 * inch))
 
@@ -289,33 +299,44 @@ def _build_session_report_pdf(session_data: dict) -> Response:
     if session_data.get("video_analysis"):
         story.append(Paragraph("Video Analysis", heading_style))
         video_data = session_data["video_analysis"]
-        
+
         video_info = []
         if video_data.get("confidence_score") is not None:
-            video_info.append(["Confidence Score:", f"{video_data['confidence_score'] * 100:.1f}%"])
+            video_info.append(
+                ["Confidence Score:", f"{video_data['confidence_score'] * 100:.1f}%"]
+            )
         if video_data.get("facial_expressions"):
             try:
                 expressions = ", ".join(
-                    f"{k} ({v*100:.0f}%)" 
+                    f"{k} ({v*100:.0f}%)"
                     for k, v in sorted(
-                        video_data["facial_expressions"].items(), 
-                        key=lambda x: x[1], 
-                        reverse=True
+                        video_data["facial_expressions"].items(),
+                        key=lambda x: x[1],
+                        reverse=True,
                     )[:3]
                 )
                 video_info.append(["Facial Expressions:", expressions])
             except Exception:
-                video_info.append(["Facial Expressions:", str(video_data.get("facial_expressions", "N/A"))])
-        
+                video_info.append(
+                    [
+                        "Facial Expressions:",
+                        str(video_data.get("facial_expressions", "N/A")),
+                    ]
+                )
+
         if video_info:
-            video_table = Table(video_info, colWidths=[2*inch, 4*inch])
-            video_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f0f0f0')),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-            ]))
+            video_table = Table(video_info, colWidths=[2 * inch, 4 * inch])
+            video_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f0f0f0")),
+                        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, -1), 10),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ]
+                )
+            )
             story.append(video_table)
             story.append(Spacer(1, 0.2 * inch))
 
@@ -323,26 +344,32 @@ def _build_session_report_pdf(session_data: dict) -> Response:
     if session_data.get("audio_analysis"):
         story.append(Paragraph("Audio Analysis", heading_style))
         audio_data = session_data["audio_analysis"]
-        
+
         audio_info = []
         if audio_data.get("sentiment"):
             audio_info.append(["Sentiment:", str(audio_data["sentiment"]).capitalize()])
         if audio_data.get("clarity_score") is not None:
-            audio_info.append(["Clarity Score:", f"{audio_data['clarity_score'] * 100:.1f}%"])
+            audio_info.append(
+                ["Clarity Score:", f"{audio_data['clarity_score'] * 100:.1f}%"]
+            )
         if audio_data.get("speech_pace"):
             audio_info.append(["Speech Pace:", f"{audio_data['speech_pace']} wpm"])
         if audio_data.get("filler_words") is not None:
             audio_info.append(["Filler Words:", str(audio_data["filler_words"])])
-        
+
         if audio_info:
-            audio_table = Table(audio_info, colWidths=[2*inch, 4*inch])
-            audio_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f0f0f0')),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-            ]))
+            audio_table = Table(audio_info, colWidths=[2 * inch, 4 * inch])
+            audio_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f0f0f0")),
+                        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, -1), 10),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ]
+                )
+            )
             story.append(audio_table)
             story.append(Spacer(1, 0.2 * inch))
 
@@ -350,19 +377,25 @@ def _build_session_report_pdf(session_data: dict) -> Response:
     if session_data.get("ai_feedback"):
         story.append(Paragraph("AI Feedback", heading_style))
         try:
-            feedback_text = Paragraph(str(session_data["ai_feedback"]), styles['Normal'])
+            feedback_text = Paragraph(
+                str(session_data["ai_feedback"]), styles["Normal"]
+            )
             story.append(feedback_text)
             story.append(Spacer(1, 0.2 * inch))
         except Exception:
             # Fallback for problematic text
-            story.append(Paragraph("Feedback available but could not be rendered.", styles['Normal']))
+            story.append(
+                Paragraph(
+                    "Feedback available but could not be rendered.", styles["Normal"]
+                )
+            )
             story.append(Spacer(1, 0.2 * inch))
 
     # Evaluation Analysis (if available)
     if session_data.get("evaluation_analysis"):
         story.append(Paragraph("Evaluation Analysis", heading_style))
         eval_data = session_data["evaluation_analysis"]
-        
+
         eval_info = []
         if eval_data.get("quality") is not None:
             eval_info.append(["Quality:", f"{eval_data['quality']:.2f}"])
@@ -370,16 +403,20 @@ def _build_session_report_pdf(session_data: dict) -> Response:
             eval_info.append(["Accuracy:", f"{eval_data['accuracy']:.2f}"])
         if eval_data.get("clarity") is not None:
             eval_info.append(["Clarity:", f"{eval_data['clarity']:.2f}"])
-        
+
         if eval_info:
-            eval_table = Table(eval_info, colWidths=[2*inch, 4*inch])
-            eval_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f0f0f0')),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-            ]))
+            eval_table = Table(eval_info, colWidths=[2 * inch, 4 * inch])
+            eval_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f0f0f0")),
+                        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, -1), 10),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ]
+                )
+            )
             story.append(eval_table)
             story.append(Spacer(1, 0.2 * inch))
 
@@ -387,9 +424,11 @@ def _build_session_report_pdf(session_data: dict) -> Response:
     try:
         doc.build(story)
     except Exception as e:
-        logger.warning(f"Error building PDF with platypus, falling back to simple PDF: {e}")
+        logger.warning(
+            f"Error building PDF with platypus, falling back to simple PDF: {e}"
+        )
         return _build_risk_report_pdf(session_data)
-    
+
     buffer.seek(0)
 
     return Response(
@@ -564,34 +603,34 @@ def create_session_routes(
     ):
         """
         Generate and download a PDF report for a session.
-        
+
         This endpoint generates a comprehensive PDF report including:
         - Session information (ID, candidate, status, risk score)
         - Timestamps and processing details
         - Video analysis results
         - Audio analysis results
         - AI feedback
-        
+
         Args:
             session_id: Interview session identifier
-            
+
         Returns:
             PDF file download
-            
+
         Raises:
             HTTPException: If session not found or PDF generation fails
         """
         try:
             logger.info(f"Generating PDF report for session {session_id}")
-            
+
             session_data = session_manager.get_session(session_id)
-            
+
             if not session_data:
                 logger.warning(f"Session {session_id} not found for PDF export")
                 raise HTTPException(status_code=404, detail="Session not found")
-            
+
             return _build_session_report_pdf(session_data)
-            
+
         except HTTPException:
             raise
         except Exception as e:
