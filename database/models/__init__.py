@@ -8,6 +8,7 @@ from sqlalchemy.sql import func  # noqa: F401
 
 from database.models._base import Base, utcnow
 from database.models.candidate import Candidate
+from database.models.interview_schedule import InterviewSchedule
 from database.models.interview_session import InterviewSession
 from database.models.interview_template import InterviewTemplate
 from database.models.notification import Notification
@@ -18,6 +19,7 @@ from database.models.user import User
 __all__ = [
     "Base",
     "Candidate",
+    "InterviewSchedule",
     "InterviewSession",
     "InterviewTemplate",
     "Notification",

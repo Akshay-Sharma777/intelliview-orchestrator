@@ -16,10 +16,12 @@ import {
   Video,
   UserCircle,
   Mail,
+  Calendar
 } from "lucide-react";
 
 const items = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
+  { href: "/schedule", label: "Schedule", icon: Calendar },
   { href: "/interview", label: "Interview", icon: Video },
   { href: "/sessions", label: "Sessions", icon: Activity },
   { href: "/candidates", label: "Candidates", icon: UserCircle },
