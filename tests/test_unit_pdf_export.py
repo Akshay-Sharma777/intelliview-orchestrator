@@ -150,9 +150,7 @@ class TestPDFGenerationFunctions:
         }
 
         # Mock SimpleDocTemplate at the point it's imported inside the function
-        with patch(
-            "reportlab.platypus.SimpleDocTemplate"
-        ) as mock_doc_template:
+        with patch("reportlab.platypus.SimpleDocTemplate") as mock_doc_template:
             mock_instance = MagicMock()
             mock_instance.build.side_effect = Exception("Platypus build failed")
             mock_doc_template.return_value = mock_instance
@@ -199,11 +197,14 @@ class TestPDFExportAPI:
         # Without running infrastructure, we expect 404 for nonexistent session
         # This verifies the endpoint is registered and returns proper HTTP responses
         response = client.get("/sessions/nonexistent-session/report/pdf")
-        
+
         # Should return 404 with JSON detail, not a 500 or HTML error page
-        assert response.status_code in [404, 500]  # 404 if session not found, 500 if infrastructure missing
+        assert response.status_code in [
+            404,
+            500,
+        ]  # 404 if session not found, 500 if infrastructure missing
         assert "application/json" in response.headers.get("content-type", "")
-        
+
         # Verify response has a detail field (FastAPI standard)
         json_data = response.json()
         assert "detail" in json_data
@@ -213,7 +214,7 @@ class TestPDFExportAPI:
         # This test demonstrates the PDF generation works when session data is provided
         # We test by directly calling the PDF generation functions (covered in unit tests above)
         # rather than trying to mock the closure-bound session_manager
-        
+
         session_data = {
             "session_id": "sess-test",
             "candidate_id": "cand-test",
@@ -223,10 +224,10 @@ class TestPDFExportAPI:
             "audio_analysis": {"sentiment": "positive"},
             "ai_feedback": "Test feedback",
         }
-        
+
         # Call the PDF generation function directly (already tested above)
         response = _build_session_report_pdf(session_data)
-        
+
         # Verify it returns a valid PDF
         assert response.status_code == 200
         assert response.media_type == "application/pdf"
