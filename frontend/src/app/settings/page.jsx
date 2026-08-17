@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { startOnboardingTour } from "@/components/OnboardingTour";
-import { useState } from "react";
 import useSWR from "swr";
 import Card from "@/components/Card";
 import { Skeleton, ErrorState } from "@/components/States";

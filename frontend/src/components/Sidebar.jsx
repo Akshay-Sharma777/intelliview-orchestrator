@@ -18,8 +18,6 @@ import {
   Mail,
 } from "lucide-react";
 
-import { jsx, jsxs } from "react/jsx-runtime";
-
 const items = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/interview", label: "Interview", icon: Video },
@@ -48,7 +46,6 @@ function Sidebar({ mobile = false, onNavigate }) {
       className={cn(
         mobile
           ? "flex w-full flex-col"
-          : "hidden w-60 shrink-0 border-r border-border bg-bg-panel md:flex md:flex-col",
           : "hidden w-60 shrink-0 border-r border-border bg-bg-panel md:flex md:flex-col"
       )}
     >
@@ -61,18 +58,12 @@ function Sidebar({ mobile = false, onNavigate }) {
           <div className="truncate text-sm font-semibold text-zinc-100">
             {companyName}
           </div>
-
-        <div>
-          <div className="text-sm font-semibold text-zinc-100">
-            AI-Intelliview
-          </div>
           <div className="text-[10px] uppercase tracking-wider text-muted">
             Orchestrator
           </div>
         </div>
       </div>
 
-      <nav className="flex-1 space-y-0.5 p-3">
       <nav
         className="flex-1 space-y-0.5 p-3"
         data-tour="sidebar"
@@ -82,35 +73,6 @@ function Sidebar({ mobile = false, onNavigate }) {
             pathname === it.href ||
             (it.href !== "/" && pathname.startsWith(it.href));
 
-          const linkProps = it.external
-            ? {
-                href: it.href,
-                target: "_blank",
-                rel: "noopener noreferrer",
-                onClick: onNavigate,
-                className: cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition text-zinc-400 hover:bg-bg-card hover:text-zinc-100",
-                ),
-              }
-            : {
-                href: it.href,
-                onClick: onNavigate,
-                className: cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
-                  active
-                    ? "bg-accent/15 text-accent-light"
-                    : "text-zinc-400 hover:bg-bg-card hover:text-zinc-100",
-                ),
-              };
-
-          const content = [
-            jsx(it.icon, { size: 16 }),
-            jsx("span", { children: it.label }),
-          ];
-
-          return it.external
-            ? jsxs("a", { ...linkProps, children: content }, it.href)
-            : jsxs(Link, { ...linkProps, children: content }, it.href);
           const tourTarget =
             it.href === "/interview"
               ? "nav-interview"
