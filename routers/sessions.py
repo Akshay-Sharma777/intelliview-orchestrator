@@ -222,18 +222,18 @@ def _build_risk_report_pdf(report: dict) -> Response:
 def _build_session_report_pdf(session_data: dict) -> Response:
     """Generate a comprehensive PDF report for a session using reportlab."""
     try:
+        from reportlab.lib import colors
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
         from reportlab.lib.pagesizes import letter
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
         from reportlab.lib.units import inch
         from reportlab.platypus import (
-            SimpleDocTemplate,
             Paragraph,
+            SimpleDocTemplate,
             Spacer,
             Table,
             TableStyle,
         )
-        from reportlab.lib import colors
-        from reportlab.lib.enums import TA_CENTER, TA_LEFT
     except ImportError:
         # Fallback to simple canvas if platypus is not available
         return _build_risk_report_pdf(session_data)
