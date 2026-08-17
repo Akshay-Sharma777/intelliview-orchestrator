@@ -49,6 +49,7 @@ function Sidebar({ mobile = false, onNavigate }) {
         mobile
           ? "flex w-full flex-col"
           : "hidden w-60 shrink-0 border-r border-border bg-bg-panel md:flex md:flex-col",
+          : "hidden w-60 shrink-0 border-r border-border bg-bg-panel md:flex md:flex-col"
       )}
     >
       <div className="flex h-14 items-center gap-2 border-b border-border px-5">
@@ -61,6 +62,10 @@ function Sidebar({ mobile = false, onNavigate }) {
             {companyName}
           </div>
 
+        <div>
+          <div className="text-sm font-semibold text-zinc-100">
+            AI-Intelliview
+          </div>
           <div className="text-[10px] uppercase tracking-wider text-muted">
             Orchestrator
           </div>
@@ -68,6 +73,10 @@ function Sidebar({ mobile = false, onNavigate }) {
       </div>
 
       <nav className="flex-1 space-y-0.5 p-3">
+      <nav
+        className="flex-1 space-y-0.5 p-3"
+        data-tour="sidebar"
+      >
         {items.map((it) => {
           const active =
             pathname === it.href ||
@@ -102,6 +111,57 @@ function Sidebar({ mobile = false, onNavigate }) {
           return it.external
             ? jsxs("a", { ...linkProps, children: content }, it.href)
             : jsxs(Link, { ...linkProps, children: content }, it.href);
+          const tourTarget =
+            it.href === "/interview"
+              ? "nav-interview"
+              : it.href === "/sessions"
+                ? "nav-sessions"
+                : it.href === "/analytics"
+                  ? "nav-analytics"
+                  : it.href === "/settings"
+                    ? "nav-settings"
+                    : undefined;
+
+          const linkClassName = cn(
+            "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+            it.external
+              ? "text-zinc-400 hover:bg-bg-card hover:text-zinc-100"
+              : active
+                ? "bg-accent/15 text-accent-light"
+                : "text-zinc-400 hover:bg-bg-card hover:text-zinc-100"
+          );
+
+          const commonProps = {
+            onClick: onNavigate,
+            className: linkClassName,
+            ...(tourTarget ? { "data-tour": tourTarget } : {}),
+          };
+
+          if (it.external) {
+            return (
+              <a
+                key={it.href}
+                href={it.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                {...commonProps}
+              >
+                <it.icon size={16} />
+                <span>{it.label}</span>
+              </a>
+            );
+          }
+
+          return (
+            <Link
+              key={it.href}
+              href={it.href}
+              {...commonProps}
+            >
+              <it.icon size={16} />
+              <span>{it.label}</span>
+            </Link>
+          );
         })}
       </nav>
 
