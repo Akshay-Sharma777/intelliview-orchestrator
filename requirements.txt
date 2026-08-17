@@ -17,7 +17,7 @@ alembic==1.19.1
 
 # === Config / validation ===
 pydantic==2.13.4
-pydantic-settings==2.14.2
+pydantic-settings==2.15.0
 python-dotenv==1.2.2
 boto3
 
