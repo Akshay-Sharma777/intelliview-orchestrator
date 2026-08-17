@@ -35,6 +35,28 @@ def _wait_for_api(base_url: str, timeout: float = 30.0) -> None:
     pytest.fail(f"API not reachable at {base_url}: {last_err}")
 
 
+def _wait_for_worker(base_url: str, timeout: float = 30.0) -> None:
+    """
+    The `worker` container boots on its own schedule (connect to Redis/
+    Postgres, then POST /register-worker) *after* the API is already
+    answering /health. Any test that dispatches work via /start-interview
+    can otherwise race a fresh stack and hit 503 "no workers available"
+    before the worker has finished registering. Poll /workers until at
+    least one is present instead of assuming readiness from /health alone.
+    """
+    deadline = time.time() + timeout
+    last_err = None
+    while time.time() < deadline:
+        try:
+            r = httpx.get(f"{base_url}/workers", timeout=2.0)
+            if r.status_code == 200 and r.json().get("workers"):
+                return
+        except Exception as e:
+            last_err = e
+        time.sleep(1.0)
+    pytest.fail(f"No worker registered at {base_url} within {timeout}s: {last_err}")
+
+
 def test_health(api_base_url):
     _wait_for_api(api_base_url)
     r = httpx.get(f"{api_base_url}/health", timeout=5.0)
@@ -46,6 +68,7 @@ def test_health(api_base_url):
 
 def test_start_interview_and_get_status(api_base_url):
     _wait_for_api(api_base_url)
+    _wait_for_worker(api_base_url)
     r = httpx.post(
         f"{api_base_url}/start-interview",
         headers=API_HEADERS,
@@ -104,6 +127,7 @@ def test_worker_register_requires_token(api_base_url):
 def test_full_pipeline_completes(api_base_url):
     """End-to-end: start an interview, wait for the worker to process it."""
     _wait_for_api(api_base_url)
+    _wait_for_worker(api_base_url)
     r = httpx.post(
         f"{api_base_url}/start-interview",
         headers=API_HEADERS,
