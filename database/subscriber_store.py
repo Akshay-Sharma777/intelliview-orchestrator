@@ -1,7 +1,10 @@
+import os
 import sqlite3
 from datetime import datetime
 
-DB_NAME = "/app/data/subscribers.db"
+DATA_DIR = os.environ.get("DATA_DIR", "./data")
+os.makedirs(DATA_DIR, exist_ok=True)
+DB_NAME = os.path.join(DATA_DIR, "subscribers.db")
 
 
 def get_connection():
