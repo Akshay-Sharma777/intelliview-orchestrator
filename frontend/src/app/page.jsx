@@ -397,7 +397,6 @@ export default function OverviewPage() {
             </Table>
           )}
         </Card>
-      </div>
 
       <Card title="Upcoming Scheduled Interviews" description="Interviews scheduled in advance with candidate confirmation emails.">
         {upcomingSchedules.error ? (
@@ -434,39 +433,7 @@ export default function OverviewPage() {
           </Table>
         )}
       </Card>
-
-
-      <Card title="Workers" description="Currently registered worker nodes.">
-        {workers.error ? (
-          <ErrorState error={workers.error} onRetry={() => workers.mutate()} />
-        ) : !workers.data ? (
-          <Skeleton className="h-24 w-full" />
-        ) : workers.data.workers.length === 0 ? (
-          <EmptyState title="No workers registered" description="Workers self-register via the worker_agent on startup." />
-        ) : (
-          <Table>
-            <Thead>
-              <Tr>
-                <Th>Worker</Th>
-                <Th>Status</Th>
-                <Th>Load</Th>
-                <Th>Last heartbeat</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {workers.data.workers.map((w) => (
-                <Tr key={w.worker_id}>
-                  <Td className="font-mono text-xs text-zinc-200">{w.worker_id}</Td>
-                  <Td><StatusBadge status={w.health_status} /></Td>
-                  <Td>{w.active_tasks}/{w.capacity}</Td>
-                  <Td className="text-muted">{formatRelative(w.last_heartbeat)}</Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        )}
-      </Card>
-      </div>
+    </div>
     </ErrorBoundary>
   );
 }
