@@ -40,3 +40,6 @@ testcontainers
 
 #for hallucination_detector
 sentence-transformers
+
+# === PDF Generation ===
+reportlab==4.2.5

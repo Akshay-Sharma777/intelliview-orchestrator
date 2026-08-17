@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
+  Download,
 } from "lucide-react";
 import Card from "@/components/Card";
 import Stat from "@/components/Stat";
@@ -35,10 +36,12 @@ import {
   YAxis,
 } from "recharts";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { exportCandidatesCSV } from "@/lib/export";
+import { toast } from "@/lib/toast";
 
 function useCandidateData() {
-  const completed = useSWR("/completed-sessions?limit=100", { refreshInterval: 10000 });
-  const failed = useSWR("/failed-sessions?limit=100", { refreshInterval: 10000 });
+  const completed = useSWR("/completed-sessions?limit=10000", { refreshInterval: 10000 });
+  const failed = useSWR("/failed-sessions?limit=10000", { refreshInterval: 10000 });
   const active = useSWR("/active-sessions", { refreshInterval: 5000 });
 
   const candidates = useMemo(() => {
@@ -110,6 +113,19 @@ export default function CandidatesPage() {
 
   const selected = candidates.find((c) => c.candidate_id === selectedId);
 
+  const handleExportCSV = () => {
+    if (candidates.length === 0) {
+      toast.error("No candidates to export");
+      return;
+    }
+    try {
+      exportCandidatesCSV(candidates);
+      toast.success("CSV exported successfully");
+    } catch (error) {
+      toast.error("Failed to export CSV");
+    }
+  };
+
   const statusData = useMemo(() => {
     if (!selected) return [];
     const counts = {};
@@ -127,9 +143,13 @@ export default function CandidatesPage() {
             <h1 className="text-2xl font-semibold text-zinc-50">Candidates</h1>
             <p className="text-sm text-muted">Candidate profiles, interview history, and performance analytics.</p>
           </div>
-          <div className="text-xs text-muted">
-            {candidates.length} candidates
-          </div>
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 rounded-md border border-border bg-bg-card px-3 py-2 text-sm text-zinc-100 hover:bg-bg-panel transition-colors"
+          >
+            <Download size={16} />
+            Export CSV
+          </button>
         </div>
 
         <StatsCards
