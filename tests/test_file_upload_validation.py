@@ -1,4 +1,5 @@
 import pytest
+
 """
 Unit tests for File Upload Security Validation (Issue 8)
 

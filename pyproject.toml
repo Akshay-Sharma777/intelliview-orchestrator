@@ -113,3 +113,8 @@ omit = ["tests/*", "*/migrations/*", "*/__init__.py"]
 
 [tool.coverage.report]
 skip_empty = true
+
+[dependency-groups]
+dev = [
+    "black>=26.5.1",
+]
