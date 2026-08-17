@@ -67,6 +67,7 @@ from routers.candidates import create_candidate_routes
 from routers.health import create_health_routes
 from routers.metrics import router as metrics_router
 from routers.questions import create_question_routes
+from routers.schedule import create_schedule_routes
 from routers.sessions import (  # noqa: F401 (re-exported for tests)
     StartInterviewRequest,
     create_session_routes,
@@ -102,33 +103,29 @@ async def lifespan(app: FastAPI):
     from database.db import SessionLocal
     from database.models import User
 
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-    def bcrypt_safe_password(password: str) -> str:
-        if len(password.encode("utf-8")) > 72:
-            raise ValueError("Password must be 72 bytes or fewer for bcrypt")
-        return password
-
-    with SessionLocal() as db:
-        try:
+    try:
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        with SessionLocal() as db:
             if not db.query(User).first():
                 admin = User(
                     user_id=str(uuid.uuid4()),
                     email="admin@example.com",
-                    password_hash=pwd_context.hash(bcrypt_safe_password("admin123")),
+                    password_hash=pwd_context.hash("admin123"),
                     role="admin",
                 )
                 db.add(admin)
                 db.commit()
                 logger.info("Created initial admin user: admin@example.com / admin123")
-        except ValueError as exc:
-            logger.error("Startup user initialization failed: %s", exc)
+    except Exception as exc:
+        logger.warning("Startup admin user seeding skipped/warning: %s", exc)
 
-    # Initialize webhook subscriber store
-    create_table()
-
-    subscribers = list_subscribers()
-    logger.info("Loaded %d webhook subscribers", len(subscribers))
+    try:
+        # Initialize webhook subscriber store
+        create_table()
+        subscribers = list_subscribers()
+        logger.info("Loaded %d webhook subscribers", len(subscribers))
+    except Exception as exc:
+        logger.warning("Webhook subscriber store initialization warning: %s", exc)
 
     logger.info("AI Interview Orchestrator server starting...")
 
@@ -349,7 +346,9 @@ app.include_router(
     )
 )
 app.include_router(create_candidate_routes(candidate_manager=candidate_manager))
+app.include_router(create_schedule_routes())
 app.include_router(create_question_routes(question_bank=question_bank))
+
 app.include_router(
     create_template_routes(interview_template_manager=interview_template_manager)
 )
