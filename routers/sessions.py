@@ -19,7 +19,6 @@ from orchestrator.security import get_current_user, require_role
 
 logger = logging.getLogger(__name__)
 
-
 class StartInterviewRequest(BaseModel):
     """Request model for starting an interview"""
 
