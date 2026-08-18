@@ -78,6 +78,7 @@ from orchestrator.redis_client import (
 )
 from orchestrator.request_validation import RequestValidationMiddleware
 from orchestrator.retry_manager import RetryManager, RetryStrategy
+from orchestrator.router import engine_router
 from orchestrator.router import router as risk_router
 from orchestrator.scheduler import Scheduler, TaskPriority
 from orchestrator.security import get_current_user, require_role
@@ -734,8 +735,25 @@ async def start_interview(
         )
 
         # Check if system can accept task
-        if not scheduler.can_accept_task():
-            logger.warning(f"System at capacity, queuing task: {session_id}")
+        try:
+            if not scheduler.can_accept_task():
+                logger.warning(f"System at capacity, rejecting task: {session_id}")
+                from fastapi.responses import JSONResponse
+
+                return JSONResponse(
+                    status_code=503,
+                    content={"error": "service_unavailable"},
+                    headers={"Retry-After": "5"},
+                )
+        except Exception as e:
+            logger.error(f"Error checking capacity: {e!s}")
+            from fastapi.responses import JSONResponse
+
+            return JSONResponse(
+                status_code=503,
+                content={"error": "service_unavailable"},
+                headers={"Retry-After": "5"},
+            )
 
         # Use scheduler to intelligently assign task
         scheduler.schedule_task(session_id, priority=priority)
@@ -1031,6 +1049,7 @@ app.include_router(create_schedule_routes())
 app.include_router(create_question_routes(question_bank=question_bank))
 app.include_router(create_settings_routes())
 app.include_router(risk_router)
+app.include_router(engine_router)
 app.include_router(
     create_template_routes(interview_template_manager=interview_template_manager)
 )

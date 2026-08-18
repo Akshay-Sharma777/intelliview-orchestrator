@@ -43,6 +43,7 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
+
     env:
       REDIS_URL: redis://localhost:6379/0
       POSTGRES_HOST: localhost
@@ -73,7 +74,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install "packaging<26"
+          pip install "packaging26"
           pip install "ruff==0.9.10" "black==25.1.0" "isort==6.0.1"
       - name: Black format check
         run: python -m black --check .
@@ -112,9 +113,15 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      API_TOKEN: test-token
+      API_TOKEN: ci-test-token
       API_BASE_URL: http://localhost:8000
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ai_interview_test
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      DATABASE_SSLMODE: disable
+      REDIS_URL: redis://redis:6379/0
       XDG_CACHE_HOME: /tmp/.cache
       HOME: /tmp
       TMPDIR: /tmp
@@ -124,7 +131,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: false
-          
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -135,14 +142,17 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install httpx pytest
+
       - name: Validate API import path
         run: |
           docker compose -f docker-compose.yml run --rm fastapi \
             python -c "import orchestrator.main; print('ok')"
+
       - name: Bring up full stack
         run: |
           docker compose -f docker-compose.yml up -d --build \
             redis postgres fastapi worker
+
       - name: Wait for API to become healthy
         run: |
           for i in $(seq 1 60); do
@@ -156,6 +166,7 @@ jobs:
           echo "API never became healthy" >&2
           docker compose -f docker-compose.yml logs
           exit 1
+
       - name: Run end-to-end smoke tests
         run: pytest tests/test_e2e_smoke.py -v -m e2e
 
@@ -186,7 +197,7 @@ jobs:
           submodules: false
 
       - name: Set up Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
@@ -203,9 +214,6 @@ jobs:
 
   # --------------------------------------------------
   # Check whether Docker Hub secrets are configured
-  # (job-level `if:` conditions cannot reference the
-  # `secrets` context directly, so we resolve it here
-  # inside a step and expose it as a job output)
   # --------------------------------------------------
 
   check-secrets:
@@ -240,7 +248,7 @@ jobs:
       - check-secrets
     runs-on: ubuntu-latest
 
-    if: |
+    if: >-
       github.event_name == 'push' &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/Stabilized-version') &&
       needs.check-secrets.outputs.has-docker-creds == 'true'
@@ -267,6 +275,7 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/intelliview-fastapi:latest
+            ${{ secrets.DOCKER_USERNAME }}/intelliview-fastapi:${{ github.sha }}
 
       - name: Build and push Worker image
         uses: docker/build-push-action@v6
@@ -275,3 +284,4 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/intelliview-worker:latest
+            ${{ secrets.DOCKER_USERNAME }}/intelliview-worker:${{ github.sha }}
