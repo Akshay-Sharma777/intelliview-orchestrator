@@ -1,7 +1,7 @@
 """add demographics to candidates
 
 Revision ID: ba062b2def4d
-Revises: 002_add_llm_usage
+Revises: 9ed9a8bcd72c
 Create Date: 2026-08-12 21:57:23.248966
 """
 
