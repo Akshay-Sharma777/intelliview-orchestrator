@@ -27,6 +27,9 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN_CD }}
 
+      - name: Prepare environment
+        run: touch .env
+
       - name: Pull latest Docker images
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
