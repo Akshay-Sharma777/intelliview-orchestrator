@@ -4,7 +4,7 @@ Re-exports everything from the split model modules so existing imports
 like `from database.models import InterviewSession` keep working.
 """
 
-from sqlalchemy.sql import func  # noqa: F401  (re-exported for ORM consumers)
+from sqlalchemy.sql import func  # noqa: F401
 
 from database.models._base import Base, utcnow
 from database.models.candidate import Candidate
@@ -13,6 +13,7 @@ from database.models.interview_session import InterviewSession
 from database.models.interview_template import InterviewTemplate
 from database.models.notification import Notification
 from database.models.question import Question
+from database.models.system_settings import SystemSettings
 from database.models.user import User
 
 __all__ = [
@@ -23,6 +24,7 @@ __all__ = [
     "InterviewTemplate",
     "Notification",
     "Question",
+    "SystemSettings",
     "User",
     "utcnow",
 ]
