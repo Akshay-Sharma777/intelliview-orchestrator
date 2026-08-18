@@ -47,6 +47,9 @@ class ApiClient {
   delete(path) {
     return this.request("DELETE", path);
   }
+  put(path, body) {
+    return this.request("PUT", path, body);
+ }
   /** Build the WebSocket URL with the token as a query param. */
   wsUrl(path) {
     const base = (process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000").replace(/^http/, "ws");
@@ -79,6 +82,8 @@ const endpoints = {
   deadLetterQueue: (limit = 50) => api.get(`/dead-letter-queue?limit=${limit}`),
 retrySession: (session_id) => api.post(`/retry-session/${session_id}`),
 detectFailures: () => api.post("/detect-failures"),
+getSettings: () => api.get("/settings"),
+updateSettings: (payload) => api.put("/settings", payload),
 reportWebVitals: (payload) => api.post("/metrics/web-vitals", payload)
 };
 export {

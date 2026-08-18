@@ -21,21 +21,14 @@ import { Table, Thead, Tbody, Tr, Th, Td } from "@/components/ui";
 const MAX_SAMPLES = 20;
 
 export default function OverviewPage() {
-  const health = useSWR("/system-health", {
-    refreshInterval: 3000,
-  });
+ 
+  const health = useSWR("/system-health", { refreshInterval: 3000 });
+  const forceLoading = true;
+  const workers = useSWR("/workers", { refreshInterval: 5000 });
+  const stats = useSWR("/session-statistics", { refreshInterval: 5000 });
+  const active = useSWR("/active-sessions", { refreshInterval: 3000 });
+  const upcomingSchedules = useSWR("/api/schedule/upcoming", { refreshInterval: 5000 });
 
-  const workers = useSWR("/workers", {
-    refreshInterval: 5000,
-  });
-
-  const stats = useSWR("/session-statistics", {
-    refreshInterval: 5000,
-  });
-
-  const active = useSWR("/active-sessions", {
-    refreshInterval: 3000,
-  });
 
   const [completedHist, setCompletedHist] = useState([]);
   const [failedHist, setFailedHist] = useState([]);
@@ -404,7 +397,43 @@ export default function OverviewPage() {
             </Table>
           )}
         </Card>
-      </div>
+
+      <Card title="Upcoming Scheduled Interviews" description="Interviews scheduled in advance with candidate confirmation emails.">
+        {upcomingSchedules.error ? (
+          <ErrorState error={upcomingSchedules.error} onRetry={() => upcomingSchedules.mutate()} />
+        ) : !upcomingSchedules.data ? (
+          <Skeleton className="h-20 w-full" />
+        ) : upcomingSchedules.data.upcoming.length === 0 ? (
+          <EmptyState title="No upcoming interviews scheduled" description="Use the Schedule page to book interviews with candidate email notifications." />
+        ) : (
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>Candidate</Th>
+                <Th>Date & Time</Th>
+                <Th>Interviewer</Th>
+                <Th>Status</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {upcomingSchedules.data.upcoming.map((sched) => (
+                <Tr key={sched.id}>
+                  <Td>
+                    <div className="font-medium text-zinc-100">{sched.candidate_name}</div>
+                    <div className="text-xs text-muted">{sched.candidate_email}</div>
+                  </Td>
+                  <Td className="text-indigo-300 font-mono text-xs">
+                    {new Date(sched.scheduled_at).toLocaleString()}
+                  </Td>
+                  <Td className="text-zinc-300">{sched.interviewer_id}</Td>
+                  <Td><StatusBadge status={sched.status} /></Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        )}
+      </Card>
+    </div>
     </ErrorBoundary>
   );
 }

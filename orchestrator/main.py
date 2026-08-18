@@ -85,6 +85,19 @@ from orchestrator.session_tracker import SessionTracker
 from orchestrator.state_sync import StateSynchronizer
 from orchestrator.worker_registry import WorkerRegistry
 from workers.bias_auditor import BiasAuditor
+from routers.admin import create_admin_routes
+from routers.candidates import create_candidate_routes
+from routers.health import create_health_routes
+from routers.metrics import router as metrics_router
+from routers.questions import create_question_routes
+from routers.schedule import create_schedule_routes
+from routers.sessions import (  # noqa: F401 (re-exported for tests)
+    StartInterviewRequest,
+    create_session_routes,
+)
+from routers.settings import create_settings_routes
+from routers.templates import create_template_routes
+from routers.workers import create_worker_routes
 
 # Configure logging after imports so startup messages are structured.
 configure_logging()
@@ -104,6 +117,37 @@ async def lifespan(app: FastAPI):
             "CRITICAL SECURITY ERROR: Default API_TOKEN detected! "
             "You MUST set a secure API_TOKEN environment variable."
         )
+    # Seed admin user
+    import uuid
+
+    from passlib.context import CryptContext
+
+    from database.db import SessionLocal
+    from database.models import User
+
+    try:
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        with SessionLocal() as db:
+            if not db.query(User).first():
+                admin = User(
+                    user_id=str(uuid.uuid4()),
+                    email="admin@example.com",
+                    password_hash=pwd_context.hash("admin123"),
+                    role="admin",
+                )
+                db.add(admin)
+                db.commit()
+                logger.info("Created initial admin user: admin@example.com / admin123")
+    except Exception as exc:
+        logger.warning("Startup admin user seeding skipped/warning: %s", exc)
+
+    try:
+        # Initialize webhook subscriber store
+        create_table()
+        subscribers = list_subscribers()
+        logger.info("Loaded %d webhook subscribers", len(subscribers))
+    except Exception as exc:
+        logger.warning("Webhook subscriber store initialization warning: %s", exc)
 
     logger.info("AI Interview Orchestrator server starting...")
 
@@ -1006,6 +1050,19 @@ def _build_risk_report_pdf(report: dict) -> Response:
         headers={
             "Content-Disposition": f"attachment; filename=risk_report_{report['session_id']}.pdf"
         },
+app.include_router(create_candidate_routes(candidate_manager=candidate_manager))
+app.include_router(create_schedule_routes())
+app.include_router(create_question_routes(question_bank=question_bank))
+app.include_router(create_settings_routes())
+app.include_router(
+    create_template_routes(interview_template_manager=interview_template_manager)
+)
+app.include_router(
+    create_worker_routes(
+        worker_registry=worker_registry,
+        load_balancer=load_balancer,
+        scheduler=scheduler,
+        session_tracker=session_tracker,
     )
 
 
