@@ -30,8 +30,8 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import or_, select
+from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as StarletteRequest
@@ -84,10 +84,7 @@ from orchestrator.session_manager import SessionManager
 from orchestrator.session_tracker import SessionTracker
 from orchestrator.state_sync import StateSynchronizer
 from orchestrator.worker_registry import WorkerRegistry
-from routers.admin import create_admin_routes
 from routers.candidates import create_candidate_routes
-from routers.health import create_health_routes
-from routers.metrics import router as metrics_router
 from routers.questions import create_question_routes
 from routers.schedule import create_schedule_routes
 from routers.sessions import (  # noqa: F401 (re-exported for tests)
@@ -385,38 +382,6 @@ app.include_router(dashboard_routes, prefix="/monitoring", tags=["monitoring"])
 # ========== Request/Response Models ==========
 
 
-class StartInterviewRequest(BaseModel):
-    """Request model for starting an interview"""
-
-    candidate_id: str = Field(
-        min_length=1, max_length=128, description="Unique candidate identifier"
-    )
-    candidate_name: str | None = Field(default=None, max_length=200)
-    position: str | None = Field(default=None, max_length=120)
-    priority: str = Field(default="medium", description="One of: low, medium, high")
-
-    @field_validator("candidate_id")
-    @classmethod
-    def _candidate_id_format(cls, v: str) -> str:
-        v = v.strip()
-        if not re.match(r"^[A-Za-z0-9._-]+$", v):
-            raise ValueError(
-                "candidate_id may only contain letters, digits, '.', '_', '-'"
-            )
-        return v
-
-    @field_validator("priority")
-    @classmethod
-    def _priority_valid(cls, v: str) -> str:
-        v = v.strip().lower()
-        if v not in {"low", "medium", "high"}:
-            raise ValueError("priority must be one of: low, medium, high")
-        return v
-
-    @field_validator("candidate_name", "position")
-    @classmethod
-    def _strip_optional(cls, v):
-        return v.strip() if isinstance(v, str) else v
 
 
 class WorkerRegistrationRequest(BaseModel):
