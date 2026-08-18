@@ -1044,12 +1044,15 @@ def _build_risk_report_pdf(report: dict) -> Response:
     c.save()
     buffer.seek(0)
 
-    return Response(
+        return Response(
         content=buffer.read(),
         media_type="application/pdf",
         headers={
             "Content-Disposition": f"attachment; filename=risk_report_{report['session_id']}.pdf"
         },
+    )
+
+
 app.include_router(create_candidate_routes(candidate_manager=candidate_manager))
 app.include_router(create_schedule_routes())
 app.include_router(create_question_routes(question_bank=question_bank))
