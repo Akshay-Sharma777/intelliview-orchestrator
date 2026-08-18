@@ -78,6 +78,7 @@ from orchestrator.redis_client import (
 )
 from orchestrator.request_validation import RequestValidationMiddleware
 from orchestrator.retry_manager import RetryManager, RetryStrategy
+from orchestrator.router import router as risk_router
 from orchestrator.scheduler import Scheduler, TaskPriority
 from orchestrator.security import get_current_user, require_role
 from orchestrator.session_manager import SessionManager
@@ -278,6 +279,17 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             log_event(
                 logger,
                 logging.INFO,
+                "request",
+                request_id=request_id,
+                method=request.method,
+                path=request.url.path,
+                status=response.status_code,
+                elapsed_ms=round(elapsed_ms, 1),
+            )
+        else:
+            log_event(
+                logger,
+                logging.DEBUG,
                 "request",
                 request_id=request_id,
                 method=request.method,
@@ -1020,6 +1032,7 @@ app.include_router(create_candidate_routes(candidate_manager=candidate_manager))
 app.include_router(create_schedule_routes())
 app.include_router(create_question_routes(question_bank=question_bank))
 app.include_router(create_settings_routes())
+app.include_router(risk_router)
 app.include_router(
     create_template_routes(interview_template_manager=interview_template_manager)
 )
