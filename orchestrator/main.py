@@ -15,6 +15,7 @@ Integrates:
 import io
 import json
 import logging
+import os
 import re
 import time
 import time as _time
@@ -1043,7 +1044,6 @@ def _build_risk_report_pdf(report: dict) -> Response:
 
     c.save()
     buffer.seek(0)
-    buffer.seek(0)
 
     return Response(
         content=buffer.read(),
@@ -1052,6 +1052,7 @@ def _build_risk_report_pdf(report: dict) -> Response:
             "Content-Disposition": f"attachment; filename=risk_report_{report['session_id']}.pdf"
         },
     )
+
 
 app.include_router(create_candidate_routes(candidate_manager=candidate_manager))
 app.include_router(create_schedule_routes())
@@ -1443,9 +1444,8 @@ async def list_candidates(
     except HTTPException:
         raise
     except Exception as e:
-        print("REAL ERROR:", repr(e))
-
-        raise
+        logger.error(f"Error listing candidates: {e!s}")
+        raise HTTPException(status_code=500, detail="Error listing candidates")
 
 
 @app.post("/candidates")
