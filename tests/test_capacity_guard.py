@@ -2,8 +2,8 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from orchestrator.main import app
 from config import API_TOKEN
+from orchestrator.main import app
 
 
 def test_returns_503_when_no_workers_available():
