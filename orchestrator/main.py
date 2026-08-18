@@ -382,8 +382,6 @@ app.include_router(dashboard_routes, prefix="/monitoring", tags=["monitoring"])
 # ========== Request/Response Models ==========
 
 
-
-
 class WorkerRegistrationRequest(BaseModel):
     """Request model for worker registration"""
 
