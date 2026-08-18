@@ -5,14 +5,13 @@ Manages candidate profiles, interview history, and scoring
 
 import logging
 import uuid
-from typing import Any
 from datetime import datetime, timedelta
-
-from sqlalchemy import select, or_, cast, Text
+from typing import Any
 
 from database.db import SessionLocal
 from database.models import Candidate, InterviewSession
 from orchestrator.time_utils import utcnow
+from sqlalchemy import Text, cast, or_, select
 
 logger = logging.getLogger(__name__)
 
