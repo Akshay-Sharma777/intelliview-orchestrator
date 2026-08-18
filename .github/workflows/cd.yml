@@ -10,8 +10,8 @@ permissions:
 
 jobs:
   deploy:
-    name: Deploy using self-hosted runner
-    runs-on: self-hosted
+    name: Deploy using github-hosted runner
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -24,23 +24,14 @@ jobs:
           password: ${{ secrets.DOCKER_TOKEN_CD }}
 
       - name: Pull latest Docker images
-        shell: powershell
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        run: |
-          Set-Location "C:\intelliview-deployment\intelliview-orchestrator"
-          docker compose pull
+        run: docker compose pull
 
       - name: Start application
-        shell: powershell
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        run: |
-          Set-Location "C:\intelliview-deployment\intelliview-orchestrator"
-          docker compose up -d
+        run: docker compose up -d
 
       - name: Check containers
-        shell: powershell
-        run: |
-          Set-Location "C:\intelliview-deployment\intelliview-orchestrator"
-          docker compose ps
+        run: docker compose ps
