@@ -23,6 +23,19 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from fastapi import Depends, FastAPI, Header, HTTPException, Response
+from fastapi.middleware.cors import CORSMiddleware
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
+
 from config import (
     API_TOKEN,
     CORS_ALLOW_ORIGINS,
@@ -32,8 +45,6 @@ from config import (
 )
 from database.db import engine, get_db
 from database.models import Base, Candidate, InterviewSession
-from fastapi import Depends, FastAPI, Header, HTTPException, Response
-from fastapi.middleware.cors import CORSMiddleware
 from metrics.prometheus_metrics import (
     POSTGRES_HEALTH,
     REDIS_HEALTH,
@@ -51,11 +62,6 @@ from metrics.prometheus_metrics import (
 from monitoring.dashboard_api import create_dashboard_routes
 from monitoring.metrics_collector import MetricsCollector
 from monitoring.websocket_manager import ws_manager
-from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from orchestrator import http_cache
 from orchestrator.auth import create_access_token
 from orchestrator.candidate_manager import CandidateManager
@@ -78,7 +84,6 @@ from orchestrator.session_manager import SessionManager
 from orchestrator.session_tracker import SessionTracker
 from orchestrator.state_sync import StateSynchronizer
 from orchestrator.worker_registry import WorkerRegistry
-from pydantic import BaseModel, Field, field_validator
 from routers.admin import create_admin_routes
 from routers.candidates import create_candidate_routes
 from routers.health import create_health_routes
@@ -92,10 +97,6 @@ from routers.sessions import (  # noqa: F401 (re-exported for tests)
 from routers.settings import create_settings_routes
 from routers.templates import create_template_routes
 from routers.workers import create_worker_routes
-from sqlalchemy import or_, select
-from sqlalchemy.orm import Session
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request as StarletteRequest
 from workers.bias_auditor import BiasAuditor
 
 # Configure logging after imports so startup messages are structured.
@@ -119,9 +120,10 @@ async def lifespan(app: FastAPI):
     # Seed admin user
     import uuid
 
+    from passlib.context import CryptContext
+
     from database.db import SessionLocal
     from database.models import User
-    from passlib.context import CryptContext
 
     try:
         pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -657,6 +659,7 @@ async def get_fairness_audit_report():
 
 if ENABLE_PROMETHEUS:
     from fastapi.responses import Response as _Response
+
     from metrics.prometheus_metrics import get_metrics_text
 
     @app.get("/metrics")
