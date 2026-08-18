@@ -79,9 +79,7 @@ class CandidateManager:
 
         try:
             c = db.execute(
-                select(Candidate).where(
-                    Candidate.candidate_id == candidate_id
-                )
+                select(Candidate).where(Candidate.candidate_id == candidate_id)
             ).scalar_one_or_none()
 
             if not c:
@@ -96,16 +94,8 @@ class CandidateManager:
                 "interview_history": c.interview_history or [],
                 "avg_score": c.avg_score,
                 "total_interviews": c.total_interviews,
-                "created_at": (
-                    c.created_at.isoformat()
-                    if c.created_at
-                    else None
-                ),
-                "updated_at": (
-                    c.updated_at.isoformat()
-                    if c.updated_at
-                    else None
-                ),
+                "created_at": (c.created_at.isoformat() if c.created_at else None),
+                "updated_at": (c.updated_at.isoformat() if c.updated_at else None),
             }
 
         finally:
@@ -141,37 +131,28 @@ class CandidateManager:
             if skill and skill.strip():
 
                 query = query.where(
-                    cast(Candidate.skills, Text).ilike(
-                        f"%{skill.strip()}%"
-                    )
+                    cast(Candidate.skills, Text).ilike(f"%{skill.strip()}%")
                 )
             # Position filter
             if position and position.strip():
                 query = query.where(
                     Candidate.interview_sessions.any(
-                        InterviewSession.position.ilike(
-                            f"%{position.strip()}%"
-                        )
+                        InterviewSession.position.ilike(f"%{position.strip()}%")
                     )
                 )
 
-             # Date range filter
+            # Date range filter
             if date_from:
                 start_date = datetime.fromisoformat(date_from)
-                query = query.where(
-                    Candidate.created_at >= start_date
-                )
+                query = query.where(Candidate.created_at >= start_date)
 
             if date_to:
                 end_date = datetime.fromisoformat(date_to) + timedelta(days=1)
-                query = query.where(
-                    Candidate.created_at < end_date
-                )
+                query = query.where(Candidate.created_at < end_date)
 
             rows = (
                 db.execute(
-                    query
-                    .order_by(Candidate.created_at.desc())
+                    query.order_by(Candidate.created_at.desc())
                     .offset(offset)
                     .limit(limit)
                 )
@@ -187,11 +168,7 @@ class CandidateManager:
                     "skills": c.skills or [],
                     "avg_score": c.avg_score,
                     "total_interviews": c.total_interviews,
-                    "created_at": (
-                        c.created_at.isoformat()
-                        if c.created_at
-                        else None
-                    ),
+                    "created_at": (c.created_at.isoformat() if c.created_at else None),
                 }
                 for c in rows
             ]
@@ -217,9 +194,7 @@ class CandidateManager:
 
         try:
             c = db.execute(
-                select(Candidate).where(
-                    Candidate.candidate_id == candidate_id
-                )
+                select(Candidate).where(Candidate.candidate_id == candidate_id)
             ).scalar_one_or_none()
 
             if not c:
@@ -240,9 +215,7 @@ class CandidateManager:
             if c.avg_score is None:
                 c.avg_score = score
             else:
-                c.avg_score = (
-                    (c.avg_score * c.total_interviews) + score
-                ) / total
+                c.avg_score = ((c.avg_score * c.total_interviews) + score) / total
 
             c.interview_history = history
             c.total_interviews = total
@@ -270,12 +243,8 @@ class CandidateManager:
             rows = (
                 db.execute(
                     select(InterviewSession)
-                    .where(
-                        InterviewSession.candidate_id == candidate_id
-                    )
-                    .order_by(
-                        InterviewSession.created_at.desc()
-                    )
+                    .where(InterviewSession.candidate_id == candidate_id)
+                    .order_by(InterviewSession.created_at.desc())
                 )
                 .scalars()
                 .all()
@@ -287,21 +256,9 @@ class CandidateManager:
                     "status": r.status,
                     "overall_score": r.overall_score,
                     "risk_score": r.risk_score,
-                    "start_time": (
-                        r.start_time.isoformat()
-                        if r.start_time
-                        else None
-                    ),
-                    "end_time": (
-                        r.end_time.isoformat()
-                        if r.end_time
-                        else None
-                    ),
-                    "created_at": (
-                        r.created_at.isoformat()
-                        if r.created_at
-                        else None
-                    ),
+                    "start_time": (r.start_time.isoformat() if r.start_time else None),
+                    "end_time": (r.end_time.isoformat() if r.end_time else None),
+                    "created_at": (r.created_at.isoformat() if r.created_at else None),
                 }
                 for r in rows
             ]
