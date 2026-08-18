@@ -8,6 +8,7 @@ DB_NAME = os.path.join(DATA_DIR, "subscribers.db")
 
 
 def get_connection():
+    os.makedirs(os.path.dirname(DB_NAME), exist_ok=True)
     return sqlite3.connect(DB_NAME)
 
 

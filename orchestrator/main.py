@@ -72,6 +72,7 @@ from routers.sessions import (  # noqa: F401 (re-exported for tests)
     StartInterviewRequest,
     create_session_routes,
 )
+from routers.settings import create_settings_routes
 from routers.templates import create_template_routes
 from routers.workers import create_worker_routes
 
@@ -348,7 +349,7 @@ app.include_router(
 app.include_router(create_candidate_routes(candidate_manager=candidate_manager))
 app.include_router(create_schedule_routes())
 app.include_router(create_question_routes(question_bank=question_bank))
-
+app.include_router(create_settings_routes())
 app.include_router(
     create_template_routes(interview_template_manager=interview_template_manager)
 )

@@ -36,6 +36,9 @@ pytest-cov==6.0.0
 testcontainers
 # === Hallucination Detector ===
 sentence-transformers
+
+# === PDF Generation ===
+reportlab==4.2.5
 faiss-cpu
 google-generativeai
 # === Load Testing ===
