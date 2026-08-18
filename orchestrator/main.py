@@ -365,9 +365,15 @@ async def login(request: LoginRequest):
 session_manager = SessionManager()
 session_tracker = SessionTracker()
 state_sync = StateSynchronizer()
-load_balancer = LoadBalancer(strategy=BalancingStrategy.LEAST_LOADED)
-scheduler = Scheduler(load_balancer=load_balancer)
 worker_registry = WorkerRegistry()
+load_balancer = LoadBalancer(
+    strategy=BalancingStrategy.LEAST_LOADED,
+    worker_registry=worker_registry,
+)
+scheduler = Scheduler(
+    load_balancer=load_balancer,
+    worker_registry=worker_registry,
+)
 fault_manager = FaultManager()
 retry_manager = RetryManager(max_retries=3, strategy=RetryStrategy.EXPONENTIAL_BACKOFF)
 health_monitor = HealthMonitor()
