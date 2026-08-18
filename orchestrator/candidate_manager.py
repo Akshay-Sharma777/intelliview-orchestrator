@@ -8,10 +8,12 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
+from fastapi import HTTPException
+from sqlalchemy import Text, cast, or_, select
+
 from database.db import SessionLocal
 from database.models import Candidate, InterviewSession
 from orchestrator.time_utils import utcnow
-from sqlalchemy import Text, cast, or_, select
 
 logger = logging.getLogger(__name__)
 
