@@ -741,18 +741,20 @@ async def start_interview(
             if not scheduler.can_accept_task():
                 logger.warning(f"System at capacity, rejecting task: {session_id}")
                 from fastapi.responses import JSONResponse
+
                 return JSONResponse(
                     status_code=503,
                     content={"error": "service_unavailable"},
-                    headers={"Retry-After": "5"}
+                    headers={"Retry-After": "5"},
                 )
         except Exception as e:
             logger.error(f"Error checking capacity: {e!s}")
             from fastapi.responses import JSONResponse
+
             return JSONResponse(
                 status_code=503,
                 content={"error": "service_unavailable"},
-                headers={"Retry-After": "5"}
+                headers={"Retry-After": "5"},
             )
 
         # Use scheduler to intelligently assign task

@@ -25,14 +25,8 @@ def get_risk_engine_weights(job_position: str):
 
     config = store.get_config_by_position(job_position)
     if config:
-        return {
-            "is_custom": True,
-            "weights": config.weights.model_dump()
-        }
-    return {
-        "is_custom": False,
-        "weights": RiskWeights().model_dump()
-    }
+        return {"is_custom": True, "weights": config.weights.model_dump()}
+    return {"is_custom": False, "weights": RiskWeights().model_dump()}
 
 
 @router.post(
