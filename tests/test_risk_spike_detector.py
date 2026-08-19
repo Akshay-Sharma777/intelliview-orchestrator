@@ -1,3 +1,5 @@
+from itertools import pairwise
+
 import pytest
 
 from workers.risk_spike_detector import RiskSpikeDetector
@@ -11,7 +13,7 @@ def test_gradual_risk_score_rise_does_not_detect_spike():
 
     results = [
         detector.detect_spike(previous, current)
-        for previous, current in zip(risk_scores, risk_scores[1:])
+        for previous, current in pairwise(risk_scores)
     ]
 
     assert all(not result["spike_detected"] for result in results)
