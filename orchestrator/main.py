@@ -63,6 +63,7 @@ from monitoring.dashboard_api import create_dashboard_routes
 from monitoring.metrics_collector import MetricsCollector
 from monitoring.websocket_manager import ws_manager
 from orchestrator import http_cache
+from orchestrator.audit_logger import audit_logger
 from orchestrator.auth import create_access_token
 from orchestrator.candidate_manager import CandidateManager
 from orchestrator.fault_manager import FaultManager
@@ -1265,8 +1266,11 @@ async def get_cache_stats():
         raise HTTPException(status_code=500, detail="Error fetching cache stats")
 
 
-@app.post("/sync-to-database", dependencies=[Depends(require_token)])
-async def sync_cache_to_database(session_id: str | None = None):
+@app.post("/sync-to-database")
+async def sync_cache_to_database(
+    session_id: str | None = None,
+    current_user=Depends(require_role("admin")),
+):
     """
     Manually sync cache to database
 
@@ -1281,6 +1285,14 @@ async def sync_cache_to_database(session_id: str | None = None):
             session_data = state_sync.get_session_state(session_id)
             if session_data:
                 state_sync.sync_state_to_db(session_id, session_data)
+
+                audit_logger.log_admin_action(
+                    action="sync-to-database",
+                    actor=current_user.get("email")
+                    or current_user.get("user_id")
+                    or "admin",
+                    details={"session_id": session_id},
+                )
                 return {"message": f"Synced session {session_id}", "status": "success"}
             raise HTTPException(status_code=404, detail="Session not found in cache")
         # Sync all active sessions
@@ -1289,6 +1301,12 @@ async def sync_cache_to_database(session_id: str | None = None):
             session_data = state_sync.get_session_state(sid)
             if session_data:
                 state_sync.sync_state_to_db(sid, session_data)
+
+        audit_logger.log_admin_action(
+            action="sync-to-database",
+            actor=current_user.get("email") or current_user.get("user_id") or "admin",
+            details={"synced_count": len(active_sessions)},
+        )
 
         return {
             "message": f"Synced {len(active_sessions)} sessions",
@@ -1302,8 +1320,10 @@ async def sync_cache_to_database(session_id: str | None = None):
         raise HTTPException(status_code=500, detail="Error syncing to database")
 
 
-@app.delete("/clear-cache", dependencies=[Depends(require_role("admin"))])
-async def clear_session_cache():
+@app.delete("/clear-cache")
+async def clear_session_cache(
+    current_user=Depends(require_role("admin")),
+):
     """
     Clear all session cache from Redis
 
@@ -1315,7 +1335,17 @@ async def clear_session_cache():
     try:
         logger.warning("Clearing all session cache from Redis")
         result = state_sync.clear_cache()
-        return {"message": "Cache cleared", "status": "success" if result else "failed"}
+
+        audit_logger.log_admin_action(
+            action="clear-cache",
+            actor=current_user.get("email") or current_user.get("user_id") or "admin",
+            details={"success": bool(result)},
+        )
+
+        return {
+            "message": "Cache cleared",
+            "status": "success" if result else "failed",
+        }
     except Exception as e:
         logger.error(f"Error clearing cache: {e!s}")
         raise HTTPException(status_code=500, detail="Error clearing cache")
