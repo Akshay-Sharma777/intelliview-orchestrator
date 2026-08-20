@@ -80,7 +80,10 @@ class CandidateManager:
 
         try:
             c = db.execute(
-                select(Candidate).where(Candidate.candidate_id == candidate_id)
+                select(Candidate).where(
+                    Candidate.candidate_id == candidate_id,
+                    Candidate.deleted_at.is_(None),
+                )
             ).scalar_one_or_none()
 
             if not c:
@@ -118,6 +121,7 @@ class CandidateManager:
         try:
 
             query = select(Candidate)
+            query = query.where(Candidate.deleted_at.is_(None))
 
             if search and search.strip():
                 value = search.strip()
@@ -180,6 +184,29 @@ class CandidateManager:
                 status_code=500,
                 detail="Error listing candidates",
             )
+
+        finally:
+            db.close()
+
+    def delete_candidate(self, candidate_id: str) -> bool:
+
+        db = SessionLocal()
+
+        try:
+
+            c = db.execute(
+                select(Candidate).where(
+                    Candidate.candidate_id == candidate_id,
+                    Candidate.deleted_at.is_(None),
+                )
+            ).scalar_one_or_none()
+
+            if not c:
+                return False
+
+            c.deleted_at = utcnow()
+            db.commit()
+            return True
 
         finally:
             db.close()
