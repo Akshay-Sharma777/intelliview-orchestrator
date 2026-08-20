@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import useSWR from "swr";
+import { api, endpoints } from "@/lib/api";
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -24,11 +25,9 @@ import { Badge } from "@/components/Badge";
 import { Skeleton } from "@/components/States";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@/components/ui";
 
-const fetcher = (url) => fetch(url).then((res) => res.json());
-
 export default function SchedulePage() {
-  const { data: candidateData, isLoading: loadingCandidates } = useSWR("/candidates", fetcher);
-  const { data: scheduleData, mutate: refreshSchedules, isLoading: loadingSchedules } = useSWR("/api/schedule", fetcher);
+  const { data: candidateData, isLoading: loadingCandidates } = useSWR("candidates", endpoints.candidates);
+  const { data: scheduleData, mutate: refreshSchedules, isLoading: loadingSchedules } = useSWR("schedule", () => endpoints.schedule());
 
   // Form State
   const [selectedCandidateId, setSelectedCandidateId] = useState("");
@@ -91,20 +90,8 @@ export default function SchedulePage() {
         scheduled_at: new Date(scheduledAt).toISOString(),
         notes: notes,
         send_email: sendEmail,
-      };
-
-      const res = await fetch("/api/schedule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.detail || "Failed to schedule interview.");
-      }
-
+      };      
+      const data = await endpoints.createSchedule(payload);
       setNotification({
         type: "success",
         message: `Interview scheduled successfully! ${
@@ -126,17 +113,11 @@ export default function SchedulePage() {
 
   // Status Change Handler
   const handleStatusUpdate = async (scheduleId, newStatus) => {
-    try {
-      const res = await fetch(`/api/schedule/${scheduleId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (res.ok) {
+     try {
+        await endpoints.updateSchedule(scheduleId, { status: newStatus });
         refreshSchedules();
-      }
-    } catch (err) {
-      console.error("Failed to update status", err);
+      } catch (err) {
+        console.error("Failed to update status", err);
     }
   };
 
