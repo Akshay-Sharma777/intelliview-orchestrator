@@ -16,15 +16,15 @@ down_revision: str | Sequence[str] | None = "ba062b2def4d"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
+
 def upgrade() -> None:
     """Upgrade schema."""
     op.add_column(
         "candidates",
         sa.Column("deleted_at", sa.DateTime(), nullable=True),
     )
-    op.create_index(
-        "ix_candidates_deleted_at", "candidates", ["deleted_at"]
-    )
+    op.create_index("ix_candidates_deleted_at", "candidates", ["deleted_at"])
+
 
 def downgrade() -> None:
     """Downgrade schema."""

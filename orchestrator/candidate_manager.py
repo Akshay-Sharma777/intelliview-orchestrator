@@ -188,7 +188,7 @@ class CandidateManager:
         finally:
             db.close()
 
-    def delete_candidate(self, candidate_id:str) -> bool:
+    def delete_candidate(self, candidate_id: str) -> bool:
 
         db = SessionLocal()
 
