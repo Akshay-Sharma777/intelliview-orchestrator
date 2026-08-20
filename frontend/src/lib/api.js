@@ -83,6 +83,7 @@ const endpoints = {
 retrySession: (session_id) => api.post(`/retry-session/${session_id}`),
 detectFailures: () => api.post("/detect-failures"),
 getSettings: () => api.get("/settings"),
+getRiskConfig: () => api.get("/api/admin/risk-config"),
 updateSettings: (payload) => api.put("/settings", payload),
 reportWebVitals: (payload) => api.post("/metrics/web-vitals", payload)
 };
