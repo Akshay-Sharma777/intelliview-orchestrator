@@ -440,16 +440,7 @@ def detect_suspicious_conversation(session_id: str) -> SuspiciousPatternResult:
 
 
 def calculate_audio_risk_score(results: dict[str, Any]) -> float:
-    """Calculate a 0–1 risk score from audio detection results."""
+    """Calculate audio risk using the centralized risk engine."""
     from workers.risk_engine import RiskScoringEngine
 
-    score = 0.0
-    factors = RiskScoringEngine.get_audio_factors()
-    
-    if results.get("background_voices", {}).get("background_voices_detected"):
-        score += factors["background_voices"]
-    if results.get("suspicious_conversation", {}).get("suspicious_pattern_detected"):
-        score += factors["suspicious_pattern"]
-    if not results.get("transcription", {}).get("text"):
-        score += factors["no_transcription"]
-    return round(min(score, 1.0), 3)
+    return RiskScoringEngine.calculate_audio_risk(results)

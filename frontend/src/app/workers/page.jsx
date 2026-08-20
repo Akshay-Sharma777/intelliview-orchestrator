@@ -6,7 +6,7 @@ import {
   Tr,
   Th,
   Td,
-} from "@/components/ui/table";
+} from "@/components/ui";
 import { useState, useMemo } from "react";
 import useSWR from "swr";
 import { Cpu, Server, Activity } from "lucide-react";
@@ -15,7 +15,6 @@ import Stat from "@/components/Stat";
 import { StatusBadge, Badge } from "@/components/Badge";
 import { Skeleton, ErrorState, EmptyState } from "@/components/States";
 import { SearchInput } from "@/components/ui";
-import { Table, Thead, Tbody, Tr, Th, Td } from "@/components/ui";
 import { formatPercent, formatRelative } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
