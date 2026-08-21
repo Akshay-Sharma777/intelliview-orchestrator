@@ -51,9 +51,16 @@ EVALUATION_DATASET_SCHEMA = {
         "question": (10, 1000),
         "answer": (1, 5000),
     },
-    "numeric_ranges": {
+        "numeric_ranges": {
         "expected_score": (0, 100),
     },
+    "conditional_required": [
+        {
+            "when_field": "expected_label",
+            "when_value": "hallucinated",
+            "then_field": "expected_score",
+        },
+    ],
 }
 
 SCHEMAS = {
