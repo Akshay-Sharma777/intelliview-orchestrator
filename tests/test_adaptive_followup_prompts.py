@@ -1,6 +1,5 @@
 from orchestrator.question_bank import (
     ADAPTIVE_FOLLOWUP_EXAMPLES,
-    ADAPTIVE_FOLLOWUP_PROMPT,
     build_adaptive_followup_prompt,
 )
 
