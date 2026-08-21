@@ -87,6 +87,7 @@ from orchestrator.session_manager import SessionManager
 from orchestrator.session_tracker import SessionTracker
 from orchestrator.state_sync import StateSynchronizer
 from orchestrator.worker_registry import WorkerRegistry
+from routers.ab_testing import create_ab_testing_routes
 from routers.candidates import create_candidate_routes
 from routers.questions import create_question_routes
 from routers.schedule import create_schedule_routes
@@ -97,6 +98,7 @@ from routers.sessions import (  # noqa: F401 (re-exported for tests)
 from routers.settings import create_settings_routes
 from routers.templates import create_template_routes
 from routers.workers import create_worker_routes
+from workers.ab_testing_framework import ABTestingFramework
 from workers.bias_auditor import BiasAuditor
 
 # Configure logging after imports so startup messages are structured.
@@ -382,6 +384,8 @@ metrics_collector = MetricsCollector()
 question_bank = QuestionBank()
 candidate_manager = CandidateManager()
 interview_template_manager = InterviewTemplateManager()
+
+ab_testing_framework = ABTestingFramework(experiment_id="risk-scoring-v1")
 
 # Register dashboard routes
 dashboard_routes = create_dashboard_routes(
@@ -1066,6 +1070,12 @@ app.include_router(
         load_balancer=load_balancer,
         scheduler=scheduler,
         session_tracker=session_tracker,
+    )
+)
+
+app.include_router(
+    create_ab_testing_routes(
+        ab_testing_framework=ab_testing_framework,
     )
 )
 
