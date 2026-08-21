@@ -153,3 +153,72 @@ DATA_SCIENCE_PROMPTS = [
         ),
     },
 ]
+
+
+MARKETING_SALES_PROMPTS = [
+    {
+        "domain": "marketing-sales",
+        "prompt_template": (
+            "You are an expert marketing and sales interviewer. "
+            "Generate one realistic sales pitch interview question. "
+            "Give the candidate a specific product, target customer, and selling situation "
+            "and ask them to explain how they would pitch the product. "
+            "The question should test customer understanding, value proposition, "
+            "persuasion, and objection handling. "
+            "Make the scenario realistic and avoid generic interview questions."
+        ),
+    },
+    {
+        "domain": "marketing-sales",
+        "prompt_template": (
+            "You are an expert marketing interviewer. "
+            "Generate one campaign case-study interview question involving an "
+            "underperforming marketing campaign. "
+            "Provide realistic information such as the target audience, campaign goal, "
+            "and performance issue, then ask the candidate how they would diagnose "
+            "the problem and improve the campaign. "
+            "Test analytical thinking, audience segmentation, channel selection, "
+            "and campaign optimization. "
+            "Avoid generic questions."
+        ),
+    },
+    {
+        "domain": "marketing-sales",
+        "prompt_template": (
+            "You are an expert sales interviewer. "
+            "Generate one realistic customer-objection scenario. "
+            "Present a customer who is interested in a product but raises a specific "
+            "objection such as price, competitor preference, lack of trust, or unclear ROI. "
+            "Ask the candidate how they would respond and move the conversation toward "
+            "a successful sale. "
+            "Test consultative selling, active listening, and objection handling. "
+            "Avoid generic questions."
+        ),
+    },
+    {
+        "domain": "marketing-sales",
+        "prompt_template": (
+            "You are an expert growth marketing interviewer. "
+            "Generate one lead-conversion case study in which a company receives "
+            "many leads but has a low conversion rate. "
+            "Ask the candidate to identify possible causes and propose a strategy "
+            "to improve conversion. "
+            "The question should test funnel analysis, customer journey understanding, "
+            "experimentation, and marketing-sales alignment. "
+            "Make the scenario practical and non-generic."
+        ),
+    },
+    {
+        "domain": "marketing-sales",
+        "prompt_template": (
+            "You are a senior marketing and sales interviewer. "
+            "Generate one go-to-market case-study question for launching a new product "
+            "in a competitive market. "
+            "Ask the candidate to explain how they would identify the target market, "
+            "position the product, choose acquisition channels, define pricing, "
+            "and measure launch success. "
+            "The scenario should require strategic reasoning and realistic trade-offs "
+            "rather than a generic marketing plan."
+        ),
+    },
+]
