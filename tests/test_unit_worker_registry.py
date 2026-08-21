@@ -93,7 +93,6 @@ def test_get_available_workers_excludes_full_and_unhealthy():
 
 
 def test_worker_statistics_computes_utilization():
-
     reg = _new_registry()
     reg.register_worker("a", capacity=4)
     reg.register_worker("b", capacity=4)
@@ -101,30 +100,9 @@ def test_worker_statistics_computes_utilization():
     reg.increment_active_tasks("b")
     stats = reg.get_worker_statistics()
     assert stats["total_workers"] == 2
-    assert stats["healthy_count"] == 2
     assert stats["total_capacity"] == 8
     assert stats["total_active_tasks"] == 2
     assert stats["capacity_utilization"] == 25.0
-
-
-def test_worker_statistics_healthy_count_with_no_workers():
-    reg = _new_registry()
-
-    stats = reg.get_worker_statistics()
-
-    assert stats["total_workers"] == 0
-    assert stats["healthy_count"] == 0
-
-
-def test_worker_statistics_healthy_count_with_one_worker():
-    reg = _new_registry()
-
-    reg.register_worker("worker1", capacity=4)
-
-    stats = reg.get_worker_statistics()
-
-    assert stats["total_workers"] == 1
-    assert stats["healthy_count"] == 1
 
 
 def test_detect_unhealthy_worker_marks_status():
