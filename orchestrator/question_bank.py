@@ -62,6 +62,8 @@ def build_adaptive_followup_prompt(
         original_question=original_question.strip(),
         candidate_answer=candidate_answer.strip(),
     )
+
+
 ADAPTIVE_FOLLOWUP_EXAMPLES = [
     {
         "original_question": "What is the purpose of database indexing?",
