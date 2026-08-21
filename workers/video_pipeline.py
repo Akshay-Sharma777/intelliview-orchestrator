@@ -244,7 +244,8 @@ def run_video_analysis(session_id: str) -> dict[str, Any]:
     results["risk_score"] = calculate_video_risk_score(results)
     logger.info(f"Video analysis completed for session {session_id}")
     return results
-    
+
+
 def detect_face(session_id: str) -> dict[str, Any]:
     """Detect faces — real MediaPipe detection with seeded stub fallback."""
     logger.info(f"Detecting faces for session {session_id}")

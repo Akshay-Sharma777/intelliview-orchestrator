@@ -202,4 +202,6 @@ def test_report_health_records_metrics():
 
 def test_report_health_unknown_worker_returns_false():
     reg = _new_registry()
-    assert reg.report_health("ghost", cpu_pct=1.0, memory_pct=1.0, queue_depth=0) is False
+    assert (
+        reg.report_health("ghost", cpu_pct=1.0, memory_pct=1.0, queue_depth=0) is False
+    )

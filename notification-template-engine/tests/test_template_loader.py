@@ -45,4 +45,3 @@ def test_validate_template_variables_none_value_raises_error():
 
     with pytest.raises(ValueError, match="Missing required template variable"):
         validate_template_variables(template, variables_with_none)
-
