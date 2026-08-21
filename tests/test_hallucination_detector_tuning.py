@@ -7,7 +7,7 @@ DATA_FILE = Path(__file__).parent / "data" / "hallucination_test_set.json"
 
 
 def load_test_set():
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
+    with open(DATA_FILE, encoding="utf-8") as f:
         return json.load(f)
 
 
