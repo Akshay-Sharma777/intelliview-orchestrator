@@ -134,6 +134,7 @@ class DatasetValidator:
         report.results.append(self._check_non_empty(records))
         report.results.append(self._check_required_fields(records))
         report.results.append(self._check_field_types(records))
+        report.results.append(self._check_conditional_required(records))
         report.results.append(self._check_enum_fields(records))
         report.results.append(self._check_numeric_ranges(records))
         report.results.append(self._check_text_length(records))
@@ -279,7 +280,56 @@ class DatasetValidator:
             ),
             offenders,
         )
+        def _check_conditional_required(self, records: list[dict[str, Any]]) -> RuleResult:
+        """
+        Enforces a field that is only required when another field equals a
+        specific value, e.g. `expected_score` must be present whenever
+        `expected_label == "hallucinated"`.
+        """
+        rules = self.schema.get("conditional_required", [])
+        offenders = []
 
+        if not rules:
+            return RuleResult(
+                "conditional_required_fields",
+                "error",
+                True,
+                "No conditional-required rules configured.",
+            )
+
+        for i, rec in enumerate(records):
+            for rule in rules:
+                when_field = rule["when_field"]
+                when_value = rule["when_value"]
+                then_field = rule["then_field"]
+
+                if rec.get(when_field) == when_value and rec.get(then_field) in (
+                    None,
+                    "",
+                    [],
+                ):
+                    offenders.append(
+                        {
+                            "index": i,
+                            "id": rec.get(self.schema.get("id_field")),
+                            "rule": f"{when_field}=={when_value!r} requires {then_field}",
+                        }
+                    )
+
+        passed = len(offenders) == 0
+
+        return RuleResult(
+            "conditional_required_fields",
+            "error",
+            passed,
+            (
+                "All conditionally-required fields present."
+                if passed
+                else f"{len(offenders)} record(s) missing a conditionally-required field."
+            ),
+            offenders,
+        )
+    
     def _check_text_length(self, records: list[dict[str, Any]]) -> RuleResult:
         text_rules = self.schema.get("text_length", {})
         offenders = []
