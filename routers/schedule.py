@@ -41,10 +41,16 @@ class CreateScheduleRequest(BaseModel):
 class UpdateScheduleRequest(BaseModel):
     """Payload for updating schedule status or details."""
 
+    schedule_id: str | None = Field(
+        default=None, description="Optional schedule ID in payload"
+    )
     status: str | None = Field(default=None, description="New schedule status")
     notes: str | None = Field(default=None, description="Updated notes")
     scheduled_at: datetime | None = Field(
         default=None, description="Rescheduled datetime"
+    )
+    new_scheduled_at: datetime | None = Field(
+        default=None, description="Rescheduled datetime alias"
     )
 
 
@@ -286,9 +292,10 @@ def create_schedule_routes() -> APIRouter:
 
             if not schedule:
                 raise HTTPException(status_code=404, detail="Schedule not found")
+            clean_status = None
 
             # Validate status input
-            if payload.status:
+            if payload.status is not None:
                 clean_status = payload.status.strip().lower()
                 if clean_status not in ALLOWED_STATUSES:
                     allowed_str = ", ".join(sorted(ALLOWED_STATUSES))
@@ -296,14 +303,33 @@ def create_schedule_routes() -> APIRouter:
                         status_code=400,
                         detail=f"Invalid status '{payload.status}'. Allowed statuses are: {allowed_str}",
                     )
-                schedule.status = clean_status
+            target_scheduled_at = (
+                payload.new_scheduled_at
+                if payload.new_scheduled_at is not None
+                else payload.scheduled_at
+            )
 
-            if payload.notes is not None:
-                schedule.notes = payload.notes
+            if clean_status == "rescheduled" and target_scheduled_at is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "A new scheduled_at date and time are required when rescheduling."
+                    ),
+                )
+            if (
+                clean_status in {"cancelled", "completed"}
+                and target_scheduled_at is not None
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"scheduled_at cannot be provided when status is '{clean_status}'.",
+                )
 
-            # Validate future datetime
-            if payload.scheduled_at:
-                sched_at = payload.scheduled_at
+            if target_scheduled_at is not None:
+                sched_at = target_scheduled_at
+
+                # Treat timezone-naive values as UTC for consistency
+                # with the existing POST endpoint.
                 if sched_at.tzinfo is None:
                     sched_at = sched_at.replace(tzinfo=timezone.utc)
                 now_utc = datetime.now(timezone.utc)
@@ -314,6 +340,14 @@ def create_schedule_routes() -> APIRouter:
                     )
                 schedule.scheduled_at = sched_at
 
+                if clean_status is None:
+                    clean_status = "rescheduled"
+            if clean_status is not None:
+                schedule.status = clean_status
+
+            if payload.notes is not None:
+                schedule.notes = payload.notes
+
             db.commit()
             db.refresh(schedule)
 
@@ -321,12 +355,17 @@ def create_schedule_routes() -> APIRouter:
                 "message": "Schedule updated successfully",
                 "schedule": {
                     "id": schedule.id,
+                    "candidate_id": schedule.candidate_id,
                     "status": schedule.status,
                     "scheduled_at": schedule.scheduled_at.isoformat(),
                     "notes": schedule.notes,
+                    "updated_at": (
+                        schedule.updated_at.isoformat() if schedule.updated_at else None
+                    ),
                 },
             }
         except HTTPException:
+            db.rollback()
             raise
         except Exception as e:
             logger.error(f"Error updating schedule: {e!s}")
