@@ -47,6 +47,9 @@ class ApiClient {
   delete(path) {
     return this.request("DELETE", path);
   }
+  patch(path, body) {
+    return this.request("PATCH", path, body);
+  }
   put(path, body) {
     return this.request("PUT", path, body);
  }
@@ -61,6 +64,7 @@ const api = new ApiClient();
 const endpoints = {
   health: () => api.get("/health"),
   startInterview: (payload) => api.post("/start-interview", payload),
+  candidates: () => api.get("/candidates"),
   createCandidate: (payload) => api.post("/candidates", payload),
   sessionStatus: (id) => api.get(`/session-status/${id}`),
   activeSessions: () => api.get("/active-sessions"),
@@ -80,11 +84,15 @@ const endpoints = {
   faultStatistics: () => api.get("/fault-statistics"),
   failureLog: (limit = 50) => api.get(`/failure-log?limit=${limit}`),
   deadLetterQueue: (limit = 50) => api.get(`/dead-letter-queue?limit=${limit}`),
-retrySession: (session_id) => api.post(`/retry-session/${session_id}`),
-detectFailures: () => api.post("/detect-failures"),
-getSettings: () => api.get("/settings"),
-updateSettings: (payload) => api.put("/settings", payload),
-reportWebVitals: (payload) => api.post("/metrics/web-vitals", payload)
+  retrySession: (session_id) => api.post(`/retry-session/${session_id}`),
+  detectFailures: () => api.post("/detect-failures"),
+  schedule: () => api.get("/api/schedule"),
+  createSchedule: (payload) => api.post("/api/schedule", payload),
+  updateSchedule: (scheduleId, payload) =>
+    api.patch(`/api/schedule/${scheduleId}`, payload),
+  getSettings: () => api.get("/settings"),
+  updateSettings: (payload) => api.put("/settings", payload),
+  reportWebVitals: (payload) => api.post("/metrics/web-vitals", payload)
 };
 export {
   ApiClient,
