@@ -771,25 +771,7 @@ def generate_feedback(session_id: str) -> dict[str, Any]:
 
 
 def calculate_evaluation_risk_score(results: dict[str, Any]) -> float:
-    """Calculate a 0–1 risk score from answer evaluation results."""
+    """Calculate evaluation risk using the centralized risk engine."""
     from workers.risk_engine import RiskScoringEngine
 
-    # Fallback default values
-    quality = (
-        results.get("answer_quality_score", {}).get("overall_quality_score", 50) / 100.0
-    )
-    accuracy = results.get("technical_accuracy", {}).get("accuracy_score", 50) / 100.0
-    clarity = results.get("communication_clarity", {}).get("clarity_score", 50) / 100.0
-    hallucination_score = (
-        1.0 if results.get("hallucination_check", {}).get("is_hallucination") else 0.0
-    )
-
-    factors = RiskScoringEngine.get_evaluation_factors()
-
-    quality_risk = (1 - quality) * factors["low_quality_answers"]
-    accuracy_risk = (1 - accuracy) * factors["low_accuracy"]
-    clarity_risk = (1 - clarity) * factors["poor_communication"]
-    hallucination_risk = hallucination_score * factors["hallucination"]
-
-    score = quality_risk + accuracy_risk + clarity_risk + hallucination_risk
-    return round(min(score, 1.0), 3)
+    return RiskScoringEngine.calculate_evaluation_risk(results)
