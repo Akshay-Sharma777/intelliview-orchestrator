@@ -6,11 +6,8 @@ from datetime import datetime, timezone
 import anyio
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
 
 from config import API_TOKEN
-from database.db import get_db
-from database.models import InterviewSession, RiskScoreOverrideAudit
 from orchestrator import http_cache
 from orchestrator.auth import create_access_token, require_token
 from orchestrator.load_balancer import BalancingStrategy
@@ -21,12 +18,6 @@ logger = logging.getLogger(__name__)
 
 class LoginRequest(BaseModel):
     api_token: str
-
-
-class ScoreOverrideRequest(BaseModel):
-    session_id: str
-    new_score: float
-    overridden_by: str
 
 
 def create_admin_routes(state_sync, load_balancer) -> APIRouter:
@@ -78,95 +69,6 @@ def create_admin_routes(state_sync, load_balancer) -> APIRouter:
             ) from exc
 
     # ========== Cache Management Endpoints ==========
-    # ========== Manual Score Override ==========
-
-    @router.post(
-        "/admin/score-override",
-        dependencies=[Depends(require_role("admin"))],
-    )
-    async def override_score(
-        request: ScoreOverrideRequest,
-        db: Session = Depends(get_db),
-    ):
-        """
-        Manually override an interview score and create an audit record.
-        """
-
-        try:
-            session = (
-                db.query(InterviewSession)
-                .filter(InterviewSession.session_id == request.session_id)
-                .first()
-            )
-
-            if session is None:
-                raise HTTPException(
-                    status_code=404,
-                    detail="Interview session not found",
-                )
-
-            if request.new_score < 0:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Score cannot be negative",
-                )
-
-            old_score = session.overall_score
-
-            if old_score is None:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Interview session does not have an existing score",
-                )
-
-            session.overall_score = request.new_score
-
-            audit_record = RiskScoreOverrideAudit(
-                session_id=session.session_id,
-                old_score=old_score,
-                new_score=request.new_score,
-                overridden_by=request.overridden_by,
-                timestamp=datetime.now(timezone.utc),
-            )
-
-            db.add(audit_record)
-            db.commit()
-            db.refresh(audit_record)
-
-            logger.info(
-                "Score overridden: session=%s old=%s new=%s by=%s",
-                session.session_id,
-                old_score,
-                request.new_score,
-                request.overridden_by,
-            )
-
-            return {
-                "status": "success",
-                "message": "Score overridden successfully",
-                "session_id": session.session_id,
-                "old_score": old_score,
-                "new_score": request.new_score,
-                "overridden_by": request.overridden_by,
-                "timestamp": audit_record.timestamp.isoformat(),
-                "audit_id": audit_record.id,
-            }
-
-        except HTTPException:
-            raise
-
-        except Exception as exc:
-            db.rollback()
-
-            logger.exception(
-                "Failed to override score for session %s",
-                request.session_id,
-            )
-
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to override score",
-            ) from exc
 
     @router.get("/cache-stats")
     async def get_cache_stats():

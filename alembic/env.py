@@ -2,9 +2,9 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
+# IMPORTANT: Import all models so SQLAlchemy registers them
 from alembic import context
 from config import DATABASE_URL
-from database import models  # noqa: F401
 from database.db import Base
 
 # Alembic Config object
@@ -13,11 +13,9 @@ config = context.config
 # Set the database URL from config.py
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
-
 # Configure logging
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-
 
 # Metadata for autogenerate
 target_metadata = Base.metadata

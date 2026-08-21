@@ -43,14 +43,6 @@ def db_session(postgres_container):
         engine.dispose()
 
 
-@pytest.fixture(autouse=True)
-def cleanup_sessions(db_session):
-    """Clean up test sessions before each test"""
-    yield
-    db_session.query(InterviewSession).delete()
-    db_session.commit()
-
-
 def _make_session(
     session_id: str,
     status: str,
