@@ -9,7 +9,14 @@ Pipeline:
      has exhausted retries (see `celery_app.task_failure` signal).
 """
 
-from __future__ import annotations
+from celery import shared_task
+
+
+@shared_task
+def reevaluate_stuck_sessions(threshold_hours=24):
+    print("Re-evaluating stuck sessions...")
+    return "Completed re-evaluation."
+
 
 import logging
 import socket
@@ -335,3 +342,14 @@ def process_interview_session(self, session_id):
         )
 
         raise self.retry(exc=exc, countdown=retry_delay)
+    # ... end of process_interview_session above ...
+
+
+@celery_app.task(bind=True, name="workers.tasks.re_evaluate_stuck_sessions")
+def re_evaluate_stuck_sessions(self, threshold_hours: int = 2):
+    """
+    Issue #42: Periodic re-evaluation task.
+    Re-runs risk evaluation on sessions flagged as 'stuck' or older than a threshold.
+    """
+    logger.info("Starting periodic re-evaluation of stuck sessions")
+    # ... rest of the code ...

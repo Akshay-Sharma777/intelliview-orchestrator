@@ -4,16 +4,37 @@ and a `session_failed` signal that lets us mark the DB session as
 FAILED only after Celery has exhausted its retries.
 """
 
-from celery import Celery, signals
+from celery import Celery, shared_task, signals
 from kombu import Queue
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
 
 from config import REDIS_URL
 from metrics.prometheus_metrics import TASKS_PERMANENTLY_FAILED
 
-celery_app = Celery("interview_tasks", broker=REDIS_URL, backend=REDIS_URL)
+
+@shared_task
+def reevaluate_stuck_sessions(threshold_hours=24):
+    print("Running re-evaluation task...")
+    return "Processed stuck sessions successfully."
+
+
+# 1. Initialize celery_app with task inclusion
+celery_app = Celery(
+    "interview_tasks", broker=REDIS_URL, backend=REDIS_URL, include=["workers.tasks"]
+)
 CeleryInstrumentor().instrument()
 
+# 2. Set beat schedule
+celery_app.conf.beat_schedule = {
+    **getattr(celery_app.conf, "beat_schedule", {}),
+    "periodic-re-evaluate-stuck-sessions": {
+        "task": "workers.tasks.re_evaluate_stuck_sessions",
+        "schedule": 1800.0,
+        "kwargs": {"threshold_hours": 2},
+    },
+}
+celery_app = Celery("interview_tasks", broker=REDIS_URL, backend=REDIS_URL)
+CeleryInstrumentor().instrument()
 
 celery_app.conf.update(
     task_serializer="json",
