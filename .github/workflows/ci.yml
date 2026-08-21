@@ -56,7 +56,7 @@ jobs:
       JSON_LOGGING: "0"
       ENABLE_PROMETHEUS: "true"
       CORS_ALLOW_ORIGINS: "*"
-      RATE_LIMIT_PER_MINUTE: "999999"
+      RATE_LIMIT_PER_MINUTE: "10000"
 
     steps:
       - name: Checkout code
@@ -93,7 +93,7 @@ jobs:
             --cov=. \
             --cov-report=term-missing \
             --cov-report=html \
-            --cov-fail-under=49 \
+            --cov-fail-under=50 \
             -v
 
       - name: Upload coverage report

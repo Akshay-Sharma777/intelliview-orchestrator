@@ -222,42 +222,29 @@ class RiskScoringEngine:
             return "HIGH"
         return "CRITICAL"
 
-    @classmethod
+    @staticmethod
     def generate_risk_report(
-        cls,
         session_id: str,
         video_result: dict[str, Any],
         audio_result: dict[str, Any],
         evaluation_result: dict[str, Any],
     ) -> dict[str, Any]:
         """Generate comprehensive risk report from all analysis results."""
-
         logger.info(f"Generating risk report for session {session_id}")
 
-        # Calculate individual pipeline risks
-        video_risk = cls.calculate_video_risk(video_result)
-        audio_risk = cls.calculate_audio_risk(audio_result)
-        evaluation_risk = cls.calculate_evaluation_risk(evaluation_result)
-
-        # Calculate weighted final risk score
-        final_risk = cls.calculate_final_risk(
-            video_risk,
-            audio_risk,
-            evaluation_risk,
+        video_risk = RiskScoringEngine.calculate_video_risk(video_result)
+        audio_risk = RiskScoringEngine.calculate_audio_risk(audio_result)
+        evaluation_risk = RiskScoringEngine.calculate_evaluation_risk(evaluation_result)
+        final_risk = RiskScoringEngine.calculate_final_risk(
+            video_risk, audio_risk, evaluation_risk
         )
+        risk_classification = RiskScoringEngine.classify_risk(final_risk)
 
-        # Classify based on weighted score
-        risk_classification = cls.classify_risk(final_risk)
-
-        # Check for rule-based override
         override = RiskOverrideEngine.evaluate(
             video_result,
             audio_result,
             evaluation_result,
         )
-
-        # Keep the original classification for audit/reporting
-        original_classification = risk_classification
 
         if override is not None:
             logger.info(
@@ -267,44 +254,32 @@ class RiskScoringEngine:
             )
             risk_classification = override
 
-        # Identify risk factors
-        risk_factors = cls._identify_risk_factors(
-            video_result,
-            audio_result,
-            evaluation_result,
+        risk_factors = RiskScoringEngine._identify_risk_factors(
+            video_result, audio_result, evaluation_result
         )
 
-        # Build final report
         report = {
             "session_id": session_id,
             "final_risk_score": final_risk,
             "risk_classification": risk_classification,
-            "override": {
-                "applied": override is not None,
-                "original_classification": original_classification,
-                "overridden_classification": override,
-            },
             "component_risks": {
                 "video_risk": video_risk,
                 "audio_risk": audio_risk,
                 "evaluation_risk": evaluation_risk,
             },
             "risk_factors": risk_factors,
-            "explanation": cls._generate_explanation(
+            "explanation": RiskScoringEngine._generate_explanation(
                 risk_classification,
                 risk_factors,
             ),
-            "recommendation": cls._generate_recommendation(
+            "recommendation": RiskScoringEngine._generate_recommendation(
                 risk_classification,
             ),
         }
 
         logger.info(
-            "Risk report generated: %s (score: %s)",
-            risk_classification,
-            final_risk,
+            f"Risk report generated: {risk_classification} (score: {final_risk})"
         )
-
         return report
 
     @staticmethod

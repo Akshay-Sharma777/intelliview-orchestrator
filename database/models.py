@@ -16,6 +16,7 @@ from sqlalchemy import (
     String,
 )
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func  # noqa: F401  (re-exported for ORM consumers)
 
 from database.db import Base
 
@@ -33,37 +34,12 @@ class User(Base):
 
     __tablename__ = "users"
 
-    user_id = Column(
-        String(255),
-        primary_key=True,
-        index=True,
-        nullable=False,
-    )
+    user_id = Column(String(255), primary_key=True, index=True, nullable=False)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    role = Column(String(50), nullable=False, default="user")
 
-    email = Column(
-        String(255),
-        unique=True,
-        index=True,
-        nullable=False,
-    )
-
-    password_hash = Column(
-        String(255),
-        nullable=False,
-    )
-
-    role = Column(
-        String(50),
-        nullable=False,
-        default="user",
-    )
-
-    created_at = Column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=utcnow,
-    )
-
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
     updated_at = Column(
         DateTime(timezone=True),
         nullable=False,
@@ -72,22 +48,16 @@ class User(Base):
     )
 
     def __repr__(self):
-        return (
-            f"<User("
-            f"user_id='{self.user_id}', "
-            f"email='{self.email}', "
-            f"role='{self.role}')>"
-        )
+        return f"<User(user_id='{self.user_id}', email='{self.email}', role='{self.role}')>"
 
 
 class InterviewSession(Base):
     """
     InterviewSession ORM Model
-    Represents an interview session with candidate and processing details.
+    Represents an interview session with candidate and processing details
     """
 
     __tablename__ = "interview_sessions"
-
     __table_args__ = (
         CheckConstraint(
             "status IN ("
@@ -114,13 +84,9 @@ class InterviewSession(Base):
             name="ck_overall_score_non_negative",
         ),
     )
+    #
 
-    session_id = Column(
-        String(255),
-        primary_key=True,
-        index=True,
-        nullable=False,
-    )
+    session_id = Column(String(255), primary_key=True, index=True, nullable=False)
 
     candidate_id = Column(
         String(255),
@@ -136,81 +102,26 @@ class InterviewSession(Base):
         index=True,
     )
 
-    assigned_node = Column(
-        String(255),
-        nullable=True,
-    )
+    assigned_node = Column(String(255), nullable=True)
+    start_time = Column(DateTime(timezone=True), nullable=True, default=utcnow)
+    end_time = Column(DateTime(timezone=True), nullable=True)
 
-    start_time = Column(
-        DateTime(timezone=True),
-        nullable=True,
-        default=utcnow,
-    )
-
-    end_time = Column(
-        DateTime(timezone=True),
-        nullable=True,
-    )
-
-    # Final calculated risk score
-    risk_score = Column(
-        Float,
-        nullable=True,
-    )
-
-    # Risk override information
-    risk_override = Column(
-        JSON,
-        nullable=True,
-    )
+    risk_score = Column(Float, nullable=True)
 
     # Analysis results stored as JSON
-    video_analysis = Column(
-        JSON,
-        nullable=True,
-    )
-
-    audio_analysis = Column(
-        JSON,
-        nullable=True,
-    )
-
-    evaluation_analysis = Column(
-        JSON,
-        nullable=True,
-    )
+    video_analysis = Column(JSON, nullable=True)
+    audio_analysis = Column(JSON, nullable=True)
+    evaluation_analysis = Column(JSON, nullable=True)
 
     # Token & cost usage tracking stored as JSON
-    llm_usage = Column(
-        JSON,
-        nullable=True,
-        default=dict,
-    )
+    llm_usage = Column(JSON, nullable=True, default=dict)
 
     # Interview Q&A tracking
-    questions_asked = Column(
-        JSON,
-        nullable=True,
-        default=list,
-    )
+    questions_asked = Column(JSON, nullable=True, default=list)
+    answers_provided = Column(JSON, nullable=True, default=list)
+    feedback_generated = Column(JSON, nullable=True, default=list)
 
-    answers_provided = Column(
-        JSON,
-        nullable=True,
-        default=list,
-    )
-
-    feedback_generated = Column(
-        JSON,
-        nullable=True,
-        default=list,
-    )
-
-    overall_score = Column(
-        Float,
-        nullable=True,
-        index=True,
-    )
+    overall_score = Column(Float, nullable=True, index=True)
 
     template_id = Column(
         String(255),
@@ -219,19 +130,13 @@ class InterviewSession(Base):
         index=True,
     )
 
-    created_at = Column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=utcnow,
-    )
-
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
     updated_at = Column(
         DateTime(timezone=True),
         nullable=False,
         default=utcnow,
         onupdate=utcnow,
     )
-
     candidate = relationship(
         "Candidate",
         back_populates="interview_sessions",
@@ -244,8 +149,7 @@ class InterviewSession(Base):
 
     def __repr__(self):
         return (
-            f"<InterviewSession("
-            f"session_id='{self.session_id}', "
+            f"<InterviewSession(session_id='{self.session_id}', "
             f"candidate_id='{self.candidate_id}', "
             f"status='{self.status}', "
             f"risk_score={self.risk_score})>"
@@ -253,142 +157,49 @@ class InterviewSession(Base):
 
 
 class Question(Base):
-    """Interview question bank entry."""
+    """Interview question bank entry"""
 
     __tablename__ = "questions"
 
-    question_id = Column(
-        String(255),
-        primary_key=True,
-        index=True,
-        nullable=False,
-    )
+    question_id = Column(String(255), primary_key=True, index=True, nullable=False)
+    text = Column(String(1000), nullable=False)
+    category = Column(String(50), nullable=False, index=True)
+    difficulty = Column(String(20), nullable=False, default="medium")
+    tags = Column(JSON, nullable=True, default=list)
+    usage_count = Column(Integer, nullable=False, default=0, index=True)
+    avg_score = Column(Float, nullable=True, index=True)
 
-    text = Column(
-        String(1000),
-        nullable=False,
-    )
-
-    category = Column(
-        String(50),
-        nullable=False,
-        index=True,
-    )
-
-    difficulty = Column(
-        String(20),
-        nullable=False,
-        default="medium",
-    )
-
-    tags = Column(
-        JSON,
-        nullable=True,
-        default=list,
-    )
-
-    usage_count = Column(
-        Integer,
-        nullable=False,
-        default=0,
-        index=True,
-    )
-
-    avg_score = Column(
-        Float,
-        nullable=True,
-        index=True,
-    )
-
-    created_at = Column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=utcnow,
-    )
-
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
     updated_at = Column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=utcnow,
-        onupdate=utcnow,
+        DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
     )
 
     def __repr__(self):
         return (
-            f"<Question("
-            f"question_id='{self.question_id}', "
+            f"<Question(question_id='{self.question_id}', "
             f"category='{self.category}', "
             f"difficulty='{self.difficulty}')>"
         )
 
 
 class Candidate(Base):
-    """Candidate profile."""
+    """Candidate profile"""
 
     __tablename__ = "candidates"
 
-    candidate_id = Column(
-        String(255),
-        primary_key=True,
-        index=True,
-        nullable=False,
-    )
-
-    name = Column(
-        String(200),
-        nullable=False,
-    )
-
-    email = Column(
-        String(255),
-        nullable=False,
-        unique=True,
-    )
-
-    resume_text = Column(
-        String(10000),
-        nullable=True,
-    )
-
-    skills = Column(
-        JSON,
-        nullable=True,
-        default=list,
-    )
-
-    interview_history = Column(
-        JSON,
-        nullable=True,
-        default=list,
-    )
-
+    candidate_id = Column(String(255), primary_key=True, index=True, nullable=False)
+    name = Column(String(200), nullable=False)
+    email = Column(String(255), nullable=False, unique=True)
+    resume_text = Column(String(10000), nullable=True)
+    skills = Column(JSON, nullable=True, default=list)
+    interview_history = Column(JSON, nullable=True, default=list)
     # Optional demographic information for fairness auditing.
     # This data is NOT passed to the LLM and is only used for compliance analytics.
-    demographics = Column(
-        JSON,
-        nullable=True,
-        default=dict,
-    )
+    demographics = Column(JSON, nullable=True, default=dict)
+    avg_score = Column(Float, nullable=True, index=True)
+    total_interviews = Column(Integer, nullable=False, default=0, index=True)
 
-    avg_score = Column(
-        Float,
-        nullable=True,
-        index=True,
-    )
-
-    total_interviews = Column(
-        Integer,
-        nullable=False,
-        default=0,
-        index=True,
-    )
-
-    created_at = Column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=utcnow,
-    )
-
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
     updated_at = Column(
         DateTime(timezone=True),
         nullable=False,
@@ -402,84 +213,26 @@ class Candidate(Base):
     )
 
     def __repr__(self):
-        return (
-            f"<Candidate("
-            f"candidate_id='{self.candidate_id}', "
-            f"name='{self.name}')>"
-        )
+        return f"<Candidate(candidate_id='{self.candidate_id}', name='{self.name}')>"
 
 
 class InterviewTemplate(Base):
-    """Interview template definition."""
+    """Interview template definition"""
 
     __tablename__ = "interview_templates"
 
-    template_id = Column(
-        String(255),
-        primary_key=True,
-        index=True,
-        nullable=False,
-    )
+    template_id = Column(String(255), primary_key=True, index=True, nullable=False)
+    name = Column(String(200), nullable=False)
+    description = Column(String(500), nullable=True)
+    interview_type = Column(String(50), nullable=False, index=True)
+    duration_minutes = Column(Integer, nullable=False, default=60)
+    question_count = Column(Integer, nullable=False, default=10)
+    category_distribution = Column(JSON, nullable=True, default=dict)
+    difficulty_distribution = Column(JSON, nullable=True, default=dict)
+    usage_count = Column(Integer, nullable=False, default=0, index=True)
+    success_rate = Column(Float, nullable=True, index=True)
 
-    name = Column(
-        String(200),
-        nullable=False,
-    )
-
-    description = Column(
-        String(500),
-        nullable=True,
-    )
-
-    interview_type = Column(
-        String(50),
-        nullable=False,
-        index=True,
-    )
-
-    duration_minutes = Column(
-        Integer,
-        nullable=False,
-        default=60,
-    )
-
-    question_count = Column(
-        Integer,
-        nullable=False,
-        default=10,
-    )
-
-    category_distribution = Column(
-        JSON,
-        nullable=True,
-        default=dict,
-    )
-
-    difficulty_distribution = Column(
-        JSON,
-        nullable=True,
-        default=dict,
-    )
-
-    usage_count = Column(
-        Integer,
-        nullable=False,
-        default=0,
-        index=True,
-    )
-
-    success_rate = Column(
-        Float,
-        nullable=True,
-        index=True,
-    )
-
-    created_at = Column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=utcnow,
-    )
-
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
     updated_at = Column(
         DateTime(timezone=True),
         nullable=False,
@@ -493,59 +246,9 @@ class InterviewTemplate(Base):
     )
 
     def __repr__(self):
-        return (
-            f"<InterviewTemplate("
-            f"template_id='{self.template_id}', "
-            f"name='{self.name}', "
-            f"type='{self.interview_type}')>"
-        )
+        return f"<InterviewTemplate(template_id='{self.template_id}', name='{self.name}', type='{self.interview_type}')>"
 
 
-class RiskScoreOverrideAudit(Base):
-    """Audit record for manual interview score overrides."""
-
-    __tablename__ = "risk_score_override_audit"
-
-    id = Column(
-        Integer,
-        primary_key=True,
-        autoincrement=True,
-    )
-
-    session_id = Column(
-        String(255),
-        ForeignKey("interview_sessions.session_id"),
-        nullable=False,
-        index=True,
-    )
-
-    old_score = Column(
-        Float,
-        nullable=False,
-    )
-
-    new_score = Column(
-        Float,
-        nullable=False,
-    )
-
-    overridden_by = Column(
-        String(255),
-        nullable=False,
-    )
-
-    timestamp = Column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=utcnow,
-    )
-
-    def __repr__(self):
-        return (
-            f"<RiskScoreOverrideAudit("
-            f"id={self.id}, "
-            f"session_id='{self.session_id}', "
-            f"old_score={self.old_score}, "
-            f"new_score={self.new_score}, "
-            f"overridden_by='{self.overridden_by}')>"
-        )
+from database.models.interview_schedule import (  # noqa: F401
+    InterviewSchedule,
+)

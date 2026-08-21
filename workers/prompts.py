@@ -1,5 +1,6 @@
 QUALITY_EVALUATION_PROMPT = (
-    "You are an expert technical interviewer. Evaluate this candidate answer. "
+    "You are an expert technical interviewer. "
+    "Evaluate this candidate answer. "
     "Return a JSON object with keys: overall_quality_score (0-100), "
     "relevance (0-1), completeness (0-1), clarity (0-1), feedback (string)."
 )
@@ -18,6 +19,81 @@ COMMUNICATION_EVALUATION_PROMPT = (
     "pace_appropriateness (0-1)."
 )
 
+PRODUCT_MANAGEMENT_PROMPTS = [
+    {
+        "domain": "product",
+        "prompt_template": (
+            "A food-delivery app can build only two of these four features this quarter: "
+            "faster checkout, restaurant loyalty rewards, scheduled delivery, and a "
+            "personalized home feed. Prioritize the features and explain your decision. "
+            "Consider user impact, business value, strategic alignment, engineering effort, "
+            "and trade-offs."
+        ),
+        "rubric_hint": (
+            "Evaluate whether the candidate clearly defines the product goal and target "
+            "users, establishes prioritization criteria, compares impact against effort, "
+            "makes an explicit ranking, explains trade-offs, and states key assumptions."
+        ),
+    },
+    {
+        "domain": "product",
+        "prompt_template": (
+            "A ride-sharing app has budget to improve only one of three areas: reducing "
+            "driver cancellation, improving rider pickup accuracy, or adding a loyalty "
+            "program. As the product manager, prioritize one initiative and explain how "
+            "you would decide between the options."
+        ),
+        "rubric_hint": (
+            "Evaluate problem framing, identification of affected users, prioritization "
+            "criteria, expected customer and business impact, effort or feasibility "
+            "considerations, trade-off reasoning, and clarity of the final recommendation."
+        ),
+    },
+    {
+        "domain": "product",
+        "prompt_template": (
+            "You are the product manager for a music streaming app. Monthly active users "
+            "are stable, but 30-day retention has fallen from 40% to 30%. Identify the "
+            "metrics you would examine to diagnose the decline and explain how each metric "
+            "would help you find the underlying problem."
+        ),
+        "rubric_hint": (
+            "Evaluate whether the candidate distinguishes the north-star metric from "
+            "diagnostic metrics, considers retention cohorts and segments, identifies "
+            "activation and engagement metrics, proposes meaningful breakdowns, and "
+            "connects metric changes to actionable hypotheses."
+        ),
+    },
+    {
+        "domain": "product",
+        "prompt_template": (
+            "A mobile payments product has increased new-user sign-ups by 25%, but the "
+            "percentage of users completing their first payment has decreased. As the "
+            "product manager, define the key metrics and funnel stages you would analyze "
+            "to understand what is happening and decide what to improve first."
+        ),
+        "rubric_hint": (
+            "Evaluate funnel understanding, metric selection, conversion analysis, "
+            "segmentation, identification of possible drop-off points, prioritization "
+            "of investigation areas, and the ability to turn metrics into product actions."
+        ),
+    },
+    {
+        "domain": "product",
+        "prompt_template": (
+            "Estimate the number of food-delivery orders placed in a large Indian city "
+            "on an average day. State your assumptions, build a simple estimation model, "
+            "calculate the estimate step by step, and explain which assumptions have the "
+            "largest effect on the result."
+        ),
+        "rubric_hint": (
+            "Evaluate whether the candidate defines the scope, uses reasonable and "
+            "explicit assumptions, breaks the estimate into logical components, performs "
+            "consistent calculations, checks the result for plausibility, and identifies "
+            "the assumptions most sensitive to the final estimate."
+        ),
+    },
+]
 
 SDE_PROMPT_TEMPLATES = [
     {
