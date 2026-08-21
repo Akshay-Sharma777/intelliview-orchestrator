@@ -313,18 +313,7 @@ def detect_multiple_persons(session_id: str) -> dict[str, Any]:
 
 
 def calculate_video_risk_score(results: dict[str, Any]) -> float:
-    """Calculate a 0–1 risk score from video detection results."""
+    """Calculate video risk using the centralized risk engine."""
     from workers.risk_engine import RiskScoringEngine
 
-    score = 0.0
-    factors = RiskScoringEngine.get_video_factors()
-
-    if results.get("multiple_persons", {}).get("multiple_persons_detected"):
-        score += factors["multiple_persons"]
-    if results.get("phone_detected", {}).get("phone_detected"):
-        score += factors["phone_detected"]
-    if results.get("head_movement_suspicious", {}).get("suspicious_movement_detected"):
-        score += factors["suspicious_head_movement"]
-    if not results.get("face_detected", {}).get("faces_found"):
-        score += factors["no_face_detected"]
-    return round(min(score, 1.0), 3)
+    return RiskScoringEngine.calculate_video_risk(results)
