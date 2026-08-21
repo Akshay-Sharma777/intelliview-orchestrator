@@ -3,7 +3,6 @@ from pathlib import Path
 
 from orchestrator.hallucination_detector import HallucinationDetector
 
-
 DATA_FILE = Path(__file__).parent / "data" / "hallucination_test_set.json"
 
 
@@ -15,9 +14,7 @@ def load_test_set():
 def run_evaluation(threshold=0.5):
     data = load_test_set()
 
-    detector = HallucinationDetector(
-        hallucination_threshold=threshold
-    )
+    detector = HallucinationDetector(hallucination_threshold=threshold)
 
     results = []
 
@@ -78,8 +75,7 @@ def main():
     print("\n===== ISSUE #50: THRESHOLD EXPERIMENT =====")
 
     print(
-        "\nThreshold | TP | FP | TN | FN | "
-        "False Positive Rate | True Positive Rate"
+        "\nThreshold | TP | FP | TN | FN | " "False Positive Rate | True Positive Rate"
     )
     print("-" * 75)
 
@@ -110,16 +106,10 @@ def main():
 
     print("\n===== BEST CANDIDATES =====")
 
-    candidates = [
-        r for r in experiment_results
-        if r["tpr"] >= 0.90
-    ]
+    candidates = [r for r in experiment_results if r["tpr"] >= 0.90]
 
     if candidates:
-        best = min(
-            candidates,
-            key=lambda r: (r["fpr"], -r["tpr"])
-        )
+        best = min(candidates, key=lambda r: (r["fpr"], -r["tpr"]))
 
         print(f"Best threshold: {best['threshold']:.2f}")
         print(f"TPR: {best['tpr']:.2%}")
