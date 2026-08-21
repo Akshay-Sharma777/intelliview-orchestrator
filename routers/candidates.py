@@ -105,7 +105,9 @@ def create_candidate_routes(candidate_manager) -> APIRouter:
             )
         except Exception as e:
             logger.error(f"Error fetching candidate stats: {e!s}")
-            raise HTTPException(status_code=500, detail="Error fetching candidate stats")
+            raise HTTPException(
+                status_code=500, detail="Error fetching candidate stats"
+            )
 
     @router.get("/candidates")
     async def list_candidates(
