@@ -316,13 +316,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(RateLimiterMiddleware, limit=60, window_seconds=60)
 app.add_middleware(
     RateLimiterMiddleware,
     limit=int(os.getenv("RATE_LIMIT_PER_MINUTE", "60")),
     window_seconds=60,
 )
-app.add_middleware(RateLimiterMiddleware, limit=1000, window_seconds=10)
 app.add_middleware(
     RequestValidationMiddleware,
     max_body_size_bytes=MAX_REQUEST_BODY_BYTES,
