@@ -36,10 +36,7 @@ def test_render_html_cancellation_notification():
         "<p>Your interview scheduled on 10 July at 5 PM has been cancelled.</p>"
         in message
     )
-    assert (
-        "<p>We will contact you soon with a new schedule.</p>"
-        in message
-    )
+    assert "<p>We will contact you soon with a new schedule.</p>" in message
 
 
 def test_html_values_are_escaped():
