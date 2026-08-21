@@ -561,6 +561,7 @@ class WorkerRegistry:
 
             return {
                 "total_workers": total_workers,
+                "healthy_count": healthy_workers,
                 "healthy_workers": healthy_workers,
                 "unhealthy_workers": total_workers - healthy_workers,
                 "total_capacity": total_capacity,
