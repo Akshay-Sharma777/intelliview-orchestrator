@@ -96,11 +96,7 @@ class ValidationReport:
             "|---|---|---|---|",
         ]
         for r in self.results:
-            status = (
-                "✅ pass"
-                if r.passed
-                else ("❌ fail" if r.severity == "error" else "⚠️ warn")
-            )
+            status = "✅ pass" if r.passed else ("❌ fail" if r.severity == "error" else "⚠️ warn")
             lines.append(f"| {r.rule_name} | {r.severity} | {status} | {r.message} |")
         return "\n".join(lines)
 
@@ -126,14 +122,13 @@ class DatasetValidator:
     def __init__(self, schema: dict[str, Any]):
         self.schema = schema
 
-    def validate(
-        self, records: list[dict[str, Any]], dataset_name: str = "dataset"
-    ) -> ValidationReport:
+    def validate(self, records: list[dict[str, Any]], dataset_name: str = "dataset") -> ValidationReport:
         report = ValidationReport(dataset_name=dataset_name, total_records=len(records))
 
         report.results.append(self._check_non_empty(records))
         report.results.append(self._check_required_fields(records))
         report.results.append(self._check_field_types(records))
+        report.results.append(self._check_question_id_format(records))
         report.results.append(self._check_enum_fields(records))
         report.results.append(self._check_numeric_ranges(records))
         report.results.append(self._check_text_length(records))
@@ -189,13 +184,10 @@ class DatasetValidator:
     def _check_field_types(self, records: list[dict[str, Any]]) -> RuleResult:
         type_map = self.schema.get("required_fields", {})
         offenders = []
+
         for i, rec in enumerate(records):
             for f_name, f_type in type_map.items():
-                if (
-                    f_name in rec
-                    and rec[f_name] is not None
-                    and not isinstance(rec[f_name], f_type)
-                ):
+                if f_name in rec and rec[f_name] is not None and not isinstance(rec[f_name], f_type):
                     offenders.append(
                         {
                             "index": i,
@@ -205,15 +197,53 @@ class DatasetValidator:
                             "got": type(rec[f_name]).__name__,
                         }
                     )
+
         passed = len(offenders) == 0
+
         return RuleResult(
             "field_types_correct",
             "error",
             passed,
+            ("All fields match expected types." if passed else f"{len(offenders)} type mismatch(es) found."),
+            offenders,
+        )
+
+    def _check_question_id_format(self, records: list[dict[str, Any]]) -> RuleResult:
+        id_field = self.schema.get("id_field")
+
+        if id_field != "question_id":
+            return RuleResult(
+                "question_id_format_valid",
+                "error",
+                True,
+                "Question ID format check not applicable.",
+            )
+
+        offenders = []
+        pattern = re.compile(r"^q_\d+$")
+
+        for i, rec in enumerate(records):
+            value = rec.get(id_field)
+
+            if value is not None and (not isinstance(value, str) or not pattern.fullmatch(value)):
+                offenders.append(
+                    {
+                        "index": i,
+                        "id": value,
+                        "expected": "q_<digits>",
+                    }
+                )
+
+        passed = len(offenders) == 0
+
+        return RuleResult(
+            "question_id_format_valid",
+            "error",
+            passed,
             (
-                "All fields match expected types."
+                "All question IDs match the expected format."
                 if passed
-                else f"{len(offenders)} type mismatch(es) found."
+                else f"{len(offenders)} invalid question ID format(s) found."
             ),
             offenders,
         )
@@ -221,9 +251,11 @@ class DatasetValidator:
     def _check_enum_fields(self, records: list[dict[str, Any]]) -> RuleResult:
         enum_fields = self.schema.get("enum_fields", {})
         offenders = []
+
         for i, rec in enumerate(records):
             for f_name, allowed in enum_fields.items():
                 val = rec.get(f_name)
+
                 if val is not None and val not in allowed:
                     offenders.append(
                         {
@@ -234,7 +266,9 @@ class DatasetValidator:
                             "allowed": sorted(allowed),
                         }
                     )
+
         passed = len(offenders) == 0
+
         return RuleResult(
             "enum_values_valid",
             "error",
@@ -250,14 +284,12 @@ class DatasetValidator:
     def _check_numeric_ranges(self, records: list[dict[str, Any]]) -> RuleResult:
         ranges = self.schema.get("numeric_ranges", {})
         offenders = []
+
         for i, rec in enumerate(records):
             for f_name, (lo, hi) in ranges.items():
                 val = rec.get(f_name)
-                if (
-                    val is not None
-                    and isinstance(val, int | float)
-                    and not (lo <= val <= hi)
-                ):
+
+                if val is not None and isinstance(val, int | float) and not (lo <= val <= hi):
                     offenders.append(
                         {
                             "index": i,
@@ -267,7 +299,9 @@ class DatasetValidator:
                             "range": [lo, hi],
                         }
                     )
+
         passed = len(offenders) == 0
+
         return RuleResult(
             "numeric_ranges_valid",
             "error",
@@ -283,12 +317,12 @@ class DatasetValidator:
     def _check_text_length(self, records: list[dict[str, Any]]) -> RuleResult:
         text_rules = self.schema.get("text_length", {})
         offenders = []
+
         for i, rec in enumerate(records):
             for f_name, (min_len, max_len) in text_rules.items():
                 val = rec.get(f_name)
-                if isinstance(val, str) and not (
-                    min_len <= len(val.strip()) <= max_len
-                ):
+
+                if isinstance(val, str) and not (min_len <= len(val.strip()) <= max_len):
                     offenders.append(
                         {
                             "index": i,
@@ -298,7 +332,9 @@ class DatasetValidator:
                             "expected": [min_len, max_len],
                         }
                     )
+
         passed = len(offenders) == 0
+
         return RuleResult(
             "text_length_valid",
             "warning",
@@ -314,32 +350,34 @@ class DatasetValidator:
     def _check_unique_ids(self, records: list[dict[str, Any]]) -> RuleResult:
         id_field = self.schema["id_field"]
         ids = [rec.get(id_field) for rec in records if rec.get(id_field) is not None]
+
         counts = Counter(ids)
         dupes = [k for k, v in counts.items() if v > 1]
         passed = len(dupes) == 0
+
         return RuleResult(
             "unique_ids",
             "error",
             passed,
-            (
-                "All record IDs are unique."
-                if passed
-                else f"{len(dupes)} duplicate ID(s) found."
-            ),
+            ("All record IDs are unique." if passed else f"{len(dupes)} duplicate ID(s) found."),
             dupes,
         )
 
     def _check_near_duplicates(self, records: list[dict[str, Any]]) -> RuleResult:
-        """Flags exact/near-duplicate text after normalization (lowercase, whitespace, punctuation)."""
+        """Flags exact/near-duplicate text after normalization."""
         dedup_field = self.schema["dedup_field"]
         seen: dict[str, Any] = {}
         offenders = []
+
         for i, rec in enumerate(records):
             raw = rec.get(dedup_field)
+
             if not isinstance(raw, str):
                 continue
+
             norm = re.sub(r"[^\w\s]", "", raw.lower())
             norm = re.sub(r"\s+", " ", norm).strip()
+
             if norm in seen:
                 offenders.append(
                     {
@@ -350,7 +388,9 @@ class DatasetValidator:
                 )
             else:
                 seen[norm] = i
+
         passed = len(offenders) == 0
+
         return RuleResult(
             "no_near_duplicates",
             "warning",
@@ -366,40 +406,47 @@ class DatasetValidator:
     def _check_class_balance(self, records: list[dict[str, Any]]) -> RuleResult:
         balance_field = self.schema["balance_field"]
         max_ratio = self.schema.get("balance_max_ratio", 5.0)
-        counts = Counter(
-            rec.get(balance_field)
-            for rec in records
-            if rec.get(balance_field) is not None
-        )
+
+        counts = Counter(rec.get(balance_field) for rec in records if rec.get(balance_field) is not None)
+
         if not counts:
             return RuleResult(
-                "class_balance", "warning", True, "No values to check balance for."
+                "class_balance",
+                "warning",
+                True,
+                "No values to check balance for.",
             )
+
         most, least = max(counts.values()), min(counts.values())
         ratio = most / least if least else float("inf")
         passed = ratio <= max_ratio
+
         return RuleResult(
             "class_balance",
             "warning",
             passed,
-            f"Class distribution for '{balance_field}': {dict(counts)} (ratio {ratio:.1f}x, max allowed {max_ratio}x).",
+            f"Class distribution for '{balance_field}': "
+            f"{dict(counts)} (ratio {ratio:.1f}x, "
+            f"max allowed {max_ratio}x).",
             [] if passed else [dict(counts)],
         )
 
-
-# ---------------------------------------------------------------------------
-# I/O helpers
-# ---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # I/O helpers
+    # ---------------------------------------------------------------------------
 
 
 def load_records(path: str) -> list[dict[str, Any]]:
     p = Path(path)
+
     if p.suffix.lower() == ".json":
         data = json.loads(p.read_text())
         return data if isinstance(data, list) else data.get("records", [])
+
     if p.suffix.lower() == ".csv":
         with p.open(newline="") as f:
             return list(csv.DictReader(f))
+
     raise ValueError(f"Unsupported file type: {p.suffix}")
 
 
@@ -411,16 +458,10 @@ def load_records(path: str) -> list[dict[str, Any]]:
 def main() -> None:
     from scripts.dataset_validation.schemas import SCHEMAS
 
-    parser = argparse.ArgumentParser(
-        description="Validate an AI training/evaluation dataset."
-    )
-    parser.add_argument(
-        "--input", required=True, help="Path to .json or .csv dataset file"
-    )
+    parser = argparse.ArgumentParser(description="Validate an AI training/evaluation dataset.")
+    parser.add_argument("--input", required=True, help="Path to .json or .csv dataset file")
     parser.add_argument("--schema", required=True, choices=list(SCHEMAS.keys()))
-    parser.add_argument(
-        "--output", default=None, help="Optional path to write JSON report"
-    )
+    parser.add_argument("--output", default=None, help="Optional path to write JSON report")
     args = parser.parse_args()
 
     records = load_records(args.input)
