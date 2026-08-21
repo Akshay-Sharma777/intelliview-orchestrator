@@ -10,3 +10,10 @@ __pycache__/
 .env
 .env.*
 !.env.example
+
+# Local caches
+.cache/
+
+frontend/node_modules/
+frontend/.next/
+*.db
