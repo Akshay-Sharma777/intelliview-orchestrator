@@ -9,7 +9,14 @@ def test_returns_503_when_no_workers_available():
     from config import API_TOKEN
 
     client = TestClient(app)
-    with patch("orchestrator.main.scheduler") as mock_scheduler:
+    with (
+        patch("orchestrator.main.scheduler") as mock_scheduler,
+        patch(
+            "orchestrator.main.session_manager.create_session",
+            return_value="test-session",
+        ),
+        patch("orchestrator.main.session_manager.update_session_status"),
+    ):
         mock_scheduler.can_accept_task.return_value = False
         response = client.post(
             "/start-interview",
@@ -26,7 +33,14 @@ def test_capacity_check_exception_fails_safe_to_503():
     from config import API_TOKEN
 
     client = TestClient(app)
-    with patch("orchestrator.main.scheduler") as mock_scheduler:
+    with (
+        patch("orchestrator.main.scheduler") as mock_scheduler,
+        patch(
+            "orchestrator.main.session_manager.create_session",
+            return_value="test-session",
+        ),
+        patch("orchestrator.main.session_manager.update_session_status"),
+    ):
         mock_scheduler.can_accept_task.side_effect = RuntimeError("redis down")
         response = client.post(
             "/start-interview",
