@@ -280,7 +280,8 @@ class DatasetValidator:
             ),
             offenders,
         )
-        def _check_conditional_required(self, records: list[dict[str, Any]]) -> RuleResult:
+
+    def _check_conditional_required(self, records: list[dict[str, Any]]) -> RuleResult:
         """
         Enforces a field that is only required when another field equals a
         specific value, e.g. `expected_score` must be present whenever
@@ -329,7 +330,7 @@ class DatasetValidator:
             ),
             offenders,
         )
-    
+
     def _check_text_length(self, records: list[dict[str, Any]]) -> RuleResult:
         text_rules = self.schema.get("text_length", {})
         offenders = []

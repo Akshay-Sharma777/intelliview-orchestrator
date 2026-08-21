@@ -90,9 +90,7 @@ def create_candidate_routes(candidate_manager) -> APIRouter:
             )
 
             # Count candidates with at least one completed session
-            completed = sum(
-                1 for c in candidates if c.get("completed_sessions", 0) > 0
-            )
+            completed = sum(1 for c in candidates if c.get("completed_sessions", 0) > 0)
 
             # Sum all active sessions across all candidates
             active_now = sum(c.get("active_sessions", 0) for c in candidates)
