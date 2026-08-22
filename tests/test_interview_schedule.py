@@ -8,7 +8,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import Index, UniqueConstraint, create_engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 from database.db import Base, get_db
@@ -814,3 +815,138 @@ def test_rescheduled_to_cancelled_creates_one_notification(
 
     assert len(notifications) == 1
     assert "cancelled" in notifications[0].message.lower()
+
+
+# ---------------------------------------------------------------------------
+# Stabilized-version - DB-level slot integrity and model table args
+# ---------------------------------------------------------------------------
+
+
+def test_duplicate_slot_booking_prevented_at_db_level(db_session):
+    """Test that booking the same candidate for the exact same slot raises IntegrityError at DB level."""
+    candidate = Candidate(
+        candidate_id="cand_dup_test",
+        name="Dup Candidate",
+        email="dup@example.com",
+    )
+    db_session.add(candidate)
+    db_session.commit()
+
+    slot_time = datetime(2026, 9, 1, 14, 0, 0, tzinfo=timezone.utc)
+
+    # First booking succeeds
+    sched1 = InterviewSchedule(
+        id="sched_dup_1",
+        candidate_id="cand_dup_test",
+        interviewer_id="Interviewer A",
+        scheduled_at=slot_time,
+        status="scheduled",
+    )
+    db_session.add(sched1)
+    db_session.commit()
+
+    # Second booking for same candidate at the same slot must fail at DB constraint level
+    sched2 = InterviewSchedule(
+        id="sched_dup_2",
+        candidate_id="cand_dup_test",
+        interviewer_id="Interviewer B",
+        scheduled_at=slot_time,
+        status="scheduled",
+    )
+    db_session.add(sched2)
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+    db_session.rollback()
+
+
+def test_different_candidates_same_slot_allowed(db_session):
+    """Test that two different candidates can have interviews scheduled at the same time."""
+    c1 = Candidate(candidate_id="cand_multi_1", name="Cand 1", email="c1@example.com")
+    c2 = Candidate(candidate_id="cand_multi_2", name="Cand 2", email="c2@example.com")
+    db_session.add_all([c1, c2])
+    db_session.commit()
+
+    slot_time = datetime(2026, 9, 2, 10, 0, 0, tzinfo=timezone.utc)
+
+    sched1 = InterviewSchedule(
+        id="sched_multi_1",
+        candidate_id="cand_multi_1",
+        interviewer_id="Interviewer Alpha",
+        scheduled_at=slot_time,
+        status="scheduled",
+    )
+    sched2 = InterviewSchedule(
+        id="sched_multi_2",
+        candidate_id="cand_multi_2",
+        interviewer_id="Interviewer Beta",
+        scheduled_at=slot_time,
+        status="scheduled",
+    )
+    db_session.add_all([sched1, sched2])
+    db_session.commit()
+
+    assert (
+        db_session.query(InterviewSchedule).filter_by(id="sched_multi_1").first()
+        is not None
+    )
+    assert (
+        db_session.query(InterviewSchedule).filter_by(id="sched_multi_2").first()
+        is not None
+    )
+
+
+def test_same_candidate_different_slots_allowed(db_session):
+    """Test that the same candidate can have multiple interviews at different times."""
+    candidate = Candidate(
+        candidate_id="cand_slots_test",
+        name="Multi Slot Cand",
+        email="multislot@example.com",
+    )
+    db_session.add(candidate)
+    db_session.commit()
+
+    time1 = datetime(2026, 9, 3, 10, 0, 0, tzinfo=timezone.utc)
+    time2 = datetime(2026, 9, 3, 14, 0, 0, tzinfo=timezone.utc)
+
+    sched1 = InterviewSchedule(
+        id="sched_slot_1",
+        candidate_id="cand_slots_test",
+        interviewer_id="Interviewer Round 1",
+        scheduled_at=time1,
+        status="scheduled",
+    )
+    sched2 = InterviewSchedule(
+        id="sched_slot_2",
+        candidate_id="cand_slots_test",
+        interviewer_id="Interviewer Round 2",
+        scheduled_at=time2,
+        status="scheduled",
+    )
+    db_session.add_all([sched1, sched2])
+    db_session.commit()
+
+    results = (
+        db_session.query(InterviewSchedule)
+        .filter_by(candidate_id="cand_slots_test")
+        .all()
+    )
+    assert len(results) == 2
+
+
+def test_interview_schedule_table_args_and_indexes():
+    """Verify table args contains unique constraint and composite indexes."""
+    table_args = InterviewSchedule.__table_args__
+    assert table_args is not None
+
+    # Check UniqueConstraint
+    unique_constraints = [
+        arg for arg in table_args if isinstance(arg, UniqueConstraint)
+    ]
+    uq_names = [uq.name for uq in unique_constraints]
+    assert "uq_schedule_candidate_slot" in uq_names
+
+    # Check composite Indexes
+    indexes = [arg for arg in table_args if isinstance(arg, Index)]
+    idx_names = [idx.name for idx in indexes]
+    assert "ix_schedule_interviewer_time" in idx_names
+    assert "ix_schedule_status_time" in idx_names
