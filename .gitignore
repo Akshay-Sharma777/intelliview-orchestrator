@@ -5,4 +5,8 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
+<<<<<<< HEAD
 .env
+=======
+data/*.db
+>>>>>>> b1144da7 (Add interview rescheduled notification template)
