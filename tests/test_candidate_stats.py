@@ -1,7 +1,6 @@
 from datetime import datetime
 
 import pytest
-from fastapi.testclient import TestClient
 
 from database.models import Candidate, InterviewSession
 
