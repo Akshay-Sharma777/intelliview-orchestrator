@@ -141,6 +141,8 @@ SYSTEM_DESIGN_PROMPT_CONFIGS = [
         "domain": "system-design",
         "seniority": "senior",
         "prompt_template": SENIOR_SYSTEM_DESIGN_TRANSACTIONS_PROMPT,
+    },
+]
 PRODUCT_MANAGEMENT_PROMPTS = [
     {
         "domain": "product",

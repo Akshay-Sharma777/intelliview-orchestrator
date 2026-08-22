@@ -135,6 +135,8 @@ def test_sync_to_database_audit_uses_authenticated_actor():
         assert call["actor"] == "admin@example.com"
     finally:
         app.dependency_overrides.pop(get_current_user, None)
+
+
 def test_risk_config_returns_live_values(monkeypatch):
     monkeypatch.setenv("RISK_VIDEO_WEIGHT", "0.5")
     monkeypatch.setenv("RISK_AUDIO_WEIGHT", "0.25")
