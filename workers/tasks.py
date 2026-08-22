@@ -22,6 +22,7 @@ from sqlalchemy import select
 from database.db import SessionLocal
 from database.models import InterviewSession
 from monitoring.prometheus_metrics import (
+    AVG_EVALUATION_LATENCY,
     FAILURE_COUNT,
     PIPELINE_LATENCY,
     POSTGRES_HEALTH,
@@ -37,6 +38,9 @@ from workers.evaluation_pipeline import evaluate_answers
 from workers.risk_engine import RiskScoringEngine
 
 logger = logging.getLogger(__name__)
+
+evaluation_latency_total = 0.0
+evaluation_latency_count = 0
 
 session_manager = SessionManager()
 state_sync = StateSynchronizer()
@@ -133,13 +137,19 @@ def _run_audio(self, session_id: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
-@celery_app.task(bind=True, max_retries=3, name="workers.tasks._after_parallel")
+@celery_app.task(
+    bind=True,
+    max_retries=3,
+    name="workers.tasks._after_parallel",
+)
 def _after_parallel(self, results: list, session_id: str):
     """Runs after video + audio group completes; then evaluation + risk.
 
     Chord callback: first argument is the list of results from the parallel
     group [video_result, audio_result], followed by the session_id from .s().
     """
+    global evaluation_latency_total, evaluation_latency_count
+
     video_result, audio_result = results[0], results[1]
     try:
         logger.info("Parallel video+audio done for %s - running evaluation", session_id)
@@ -149,6 +159,7 @@ def _after_parallel(self, results: list, session_id: str):
 
         start = time.perf_counter()
         evaluation_result = evaluate_answers(session_id)
+        evaluation_completed_at = datetime.now(timezone.utc)
 
         latency = time.perf_counter() - start
         PIPELINE_LATENCY.labels(stage="evaluation").observe(latency)
@@ -176,6 +187,15 @@ def _after_parallel(self, results: list, session_id: str):
                 )
             ).scalar_one_or_none()
             if interview:
+                evaluation_latency = (
+                    evaluation_completed_at - interview.start_time
+                ).total_seconds()
+
+                evaluation_latency_total += evaluation_latency
+                evaluation_latency_count += 1
+                AVG_EVALUATION_LATENCY.set(
+                    evaluation_latency_total / evaluation_latency_count
+                )
                 interview.risk_score = final_risk_score
                 interview.video_analysis = video_result
                 interview.audio_analysis = audio_result
