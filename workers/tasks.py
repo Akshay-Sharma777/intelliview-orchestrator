@@ -17,6 +17,7 @@ import time
 from datetime import datetime, timezone
 
 from celery import chord, group
+from celery.exceptions import Retry
 from sqlalchemy import select
 
 from database.db import SessionLocal
@@ -32,7 +33,12 @@ from monitoring.prometheus_metrics import (
 from orchestrator.session_manager import SessionManager
 from orchestrator.state_sync import StateSynchronizer
 from orchestrator.worker_registry import WorkerRegistry
-from workers.celery_app import celery_app
+from workers.celery_app import (
+    EVALUATION_MAX_RETRIES,
+    EVALUATION_RETRY_BACKOFF_BASE,
+    EVALUATION_RETRY_BACKOFF_MAX,
+    celery_app,
+)
 from workers.evaluation_pipeline import evaluate_answers
 from workers.risk_engine import RiskScoringEngine
 
@@ -133,7 +139,11 @@ def _run_audio(self, session_id: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
-@celery_app.task(bind=True, max_retries=3, name="workers.tasks._after_parallel")
+@celery_app.task(
+    bind=True,
+    max_retries=EVALUATION_MAX_RETRIES,
+    name="workers.tasks._after_parallel",
+)
 def _after_parallel(self, results: list, session_id: str):
     """Runs after video + audio group completes; then evaluation + risk.
 
@@ -148,8 +158,27 @@ def _after_parallel(self, results: list, session_id: str):
         )
 
         start = time.perf_counter()
-        evaluation_result = evaluate_answers(session_id)
-
+        try:
+            evaluation_result = evaluate_answers(session_id)
+        except Exception as exc:
+            retry_delay = min(
+                EVALUATION_RETRY_BACKOFF_BASE ** (self.request.retries + 1),
+                EVALUATION_RETRY_BACKOFF_MAX,
+            )
+            logger.warning(
+                "Evaluation failed for session %s "
+                "(attempt %d/%d), retrying in %ds: %s",
+                session_id,
+                self.request.retries + 1,
+                EVALUATION_MAX_RETRIES,
+                retry_delay,
+                exc,
+                exc_info=True,
+            )
+            raise self.retry(
+                exc=exc,
+                countdown=retry_delay,
+            )
         latency = time.perf_counter() - start
         PIPELINE_LATENCY.labels(stage="evaluation").observe(latency)
         logger.info(
@@ -192,7 +221,8 @@ def _after_parallel(self, results: list, session_id: str):
         session_manager.mark_session_completed(session_id, final_risk_score)
         state_sync.delete_session_state(session_id)
         logger.info("Successfully completed processing for session %s", session_id)
-
+    except Retry:
+        raise
     except Exception as exc:
         logger.error(
             "Post-parallel stage failed for %s: %s", session_id, exc, exc_info=True

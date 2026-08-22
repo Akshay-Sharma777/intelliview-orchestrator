@@ -5,4 +5,15 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
+
+# Environment variables
 .env
+.env.*
+!.env.example
+
+# Local caches
+.cache/
+
+frontend/node_modules/
+frontend/.next/
+*.db
