@@ -356,13 +356,7 @@ def create_schedule_routes() -> APIRouter:
                 else payload.scheduled_at
             )
 
-            if clean_status == "rescheduled" and target_scheduled_at is None:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        "A new scheduled_at date and time are required when rescheduling."
-                    ),
-                )
+             
             if (
                 clean_status in {"cancelled", "completed"}
                 and target_scheduled_at is not None
