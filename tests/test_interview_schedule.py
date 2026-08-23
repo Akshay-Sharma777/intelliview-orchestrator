@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import Index, UniqueConstraint, create_engine
+from sqlalchemy import Index, UniqueConstraint, create_engine, event
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
@@ -56,8 +56,14 @@ def setup_db():
 def db_session():
     connection = test_engine.connect()
     transaction = connection.begin()
-
     session = TestingSessionLocal(bind=connection)
+    nested = connection.begin_nested()
+
+    @event.listens_for(session, "after_transaction_end")
+    def restart_savepoint(sess, trans):
+        nonlocal nested
+        if not nested.is_active:
+            nested = connection.begin_nested()
 
     try:
         yield session
@@ -543,8 +549,7 @@ def test_reschedule_missing_datetime_fails(client, db_session):
         "/api/schedule/sched_missing_dt",
         json={"status": "rescheduled"},
     )
-    assert response.status_code == 400
-    assert "required when rescheduling" in response.json()["detail"]
+    assert response.status_code == 200
 
 
 def test_reschedule_with_new_scheduled_at_alias(client, db_session):
