@@ -23,6 +23,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from anyio import Path
 from fastapi import Depends, FastAPI, Header, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from opentelemetry import trace
@@ -2443,15 +2444,15 @@ async def get_dashboard():
         HTML content of the dashboard
     """
     try:
-        import os
 
         dashboard_path = os.path.join(
             os.path.dirname(__file__), "..", "monitoring", "dashboard.html"
         )
 
-        if os.path.exists(dashboard_path):
-            with open(dashboard_path, encoding="utf-8") as f:
-                html_content = f.read()
+        dashboard_file = Path(dashboard_path)
+
+        if await dashboard_file.exists():
+            html_content = await dashboard_file.read_text(encoding="utf-8")
 
             from fastapi.responses import HTMLResponse
 
