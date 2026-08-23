@@ -5,8 +5,16 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
-<<<<<<< HEAD
+
+# Environment variables
 .env
-=======
-data/*.db
->>>>>>> b1144da7 (Add interview rescheduled notification template)
+.env.*
+!.env.example
+
+# Local caches
+.cache/
+frontend/node_modules/
+frontend/.next/
+
+# Databases
+*.db

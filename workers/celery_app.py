@@ -12,6 +12,9 @@ from config import REDIS_URL
 from metrics.prometheus_metrics import TASKS_PERMANENTLY_FAILED
 
 celery_app = Celery("interview_tasks", broker=REDIS_URL, backend=REDIS_URL)
+EVALUATION_MAX_RETRIES = 3
+EVALUATION_RETRY_BACKOFF_BASE = 2
+EVALUATION_RETRY_BACKOFF_MAX = 60
 CeleryInstrumentor().instrument()
 
 
