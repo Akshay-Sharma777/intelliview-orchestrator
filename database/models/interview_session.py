@@ -17,11 +17,10 @@ from database.models._base import Base, utcnow
 class InterviewSession(Base):
     """
     InterviewSession ORM Model
-    Represents an interview session with candidate and processing details.
+    Represents an interview session with candidate and processing details
     """
 
     __tablename__ = "interview_sessions"
-
     __table_args__ = (
         CheckConstraint(
             "status IN ("
@@ -49,137 +48,37 @@ class InterviewSession(Base):
         ),
     )
 
-    session_id = Column(
-        String(255),
-        primary_key=True,
-        index=True,
-        nullable=False,
-    )
-
+    session_id = Column(String(255), primary_key=True, index=True, nullable=False)
     candidate_id = Column(
-        String(255),
-        ForeignKey("candidates.candidate_id"),
-        nullable=False,
-        index=True,
+        String(255), ForeignKey("candidates.candidate_id"), nullable=False, index=True
     )
-
-    status = Column(
-        String(50),
-        nullable=False,
-        default="pending",
-        index=True,
-    )
-
-    assigned_node = Column(
-        String(255),
-        nullable=True,
-    )
-
-    start_time = Column(
-        DateTime,
-        nullable=True,
-        default=utcnow,
-    )
-
-    end_time = Column(
-        DateTime,
-        nullable=True,
-    )
-
-    # Final calculated risk score
-    risk_score = Column(
-        Float,
-        nullable=True,
-    )
-
-    # Risk override information
-    risk_override = Column(
-        JSON,
-        nullable=True,
-    )
-
-    # Analysis results
-    video_analysis = Column(
-        JSON,
-        nullable=True,
-    )
-
-    audio_analysis = Column(
-        JSON,
-        nullable=True,
-    )
-
-    evaluation_analysis = Column(
-        JSON,
-        nullable=True,
-    )
-
-    # Token and cost usage tracking
-    llm_usage = Column(
-        JSON,
-        nullable=True,
-        default=dict,
-    )
-
-    # Interview Q&A tracking
-    questions_asked = Column(
-        JSON,
-        nullable=True,
-        default=list,
-    )
-
-    answers_provided = Column(
-        JSON,
-        nullable=True,
-        default=list,
-    )
-
-    feedback_generated = Column(
-        JSON,
-        nullable=True,
-        default=list,
-    )
-
-    overall_score = Column(
-        Float,
-        nullable=True,
-        index=True,
-    )
-
+    status = Column(String(50), nullable=False, default="pending", index=True)
+    assigned_node = Column(String(255), nullable=True)
+    start_time = Column(DateTime, nullable=True, default=utcnow)
+    end_time = Column(DateTime, nullable=True)
+    risk_score = Column(Float, nullable=True)
+    video_analysis = Column(JSON, nullable=True)
+    audio_analysis = Column(JSON, nullable=True)
+    evaluation_analysis = Column(JSON, nullable=True)
+    questions_asked = Column(JSON, nullable=True, default=list)
+    answers_provided = Column(JSON, nullable=True, default=list)
+    feedback_generated = Column(JSON, nullable=True, default=list)
+    overall_score = Column(Float, nullable=True, index=True)
     template_id = Column(
         String(255),
         ForeignKey("interview_templates.template_id"),
         nullable=True,
         index=True,
     )
+    created_at = Column(DateTime, nullable=False, default=utcnow)
+    updated_at = Column(DateTime, nullable=False, default=utcnow, onupdate=utcnow)
 
-    created_at = Column(
-        DateTime,
-        nullable=False,
-        default=utcnow,
-    )
-
-    updated_at = Column(
-        DateTime,
-        nullable=False,
-        default=utcnow,
-        onupdate=utcnow,
-    )
-
-    candidate = relationship(
-        "Candidate",
-        back_populates="interview_sessions",
-    )
-
-    template = relationship(
-        "InterviewTemplate",
-        back_populates="interview_sessions",
-    )
+    candidate = relationship("Candidate", back_populates="interview_sessions")
+    template = relationship("InterviewTemplate", back_populates="interview_sessions")
 
     def __repr__(self):
         return (
-            f"<InterviewSession("
-            f"session_id='{self.session_id}', "
+            f"<InterviewSession(session_id='{self.session_id}', "
             f"candidate_id='{self.candidate_id}', "
             f"status='{self.status}', "
             f"risk_score={self.risk_score})>"

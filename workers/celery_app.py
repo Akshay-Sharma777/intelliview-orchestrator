@@ -22,6 +22,10 @@ def reevaluate_stuck_sessions(threshold_hours=24):
 celery_app = Celery(
     "interview_tasks", broker=REDIS_URL, backend=REDIS_URL, include=["workers.tasks"]
 )
+celery_app = Celery("interview_tasks", broker=REDIS_URL, backend=REDIS_URL)
+EVALUATION_MAX_RETRIES = 3
+EVALUATION_RETRY_BACKOFF_BASE = 2
+EVALUATION_RETRY_BACKOFF_MAX = 60
 CeleryInstrumentor().instrument()
 
 # 2. Set beat schedule
