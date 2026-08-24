@@ -1,7 +1,6 @@
 import logging
 import random
 import time
-
 from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)

@@ -1,7 +1,6 @@
 import logging
 
 import pytest
-
 from notifier import ConsoleNotifier, Notifier, TransientNotificationError
 
 
