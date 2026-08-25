@@ -64,9 +64,13 @@ def test_behavioral_prompt_has_star_structure():
 def test_five_sample_transcripts_cover_follow_up_cases():
     assert len(SAMPLE_TRANSCRIPTS) == 5
 
-    follow_up_cases = [transcript for transcript in SAMPLE_TRANSCRIPTS if transcript["expected_follow_up"]]
+    follow_up_cases = [
+        transcript for transcript in SAMPLE_TRANSCRIPTS if transcript["expected_follow_up"]
+    ]
 
-    complete_cases = [transcript for transcript in SAMPLE_TRANSCRIPTS if not transcript["expected_follow_up"]]
+    complete_cases = [
+        transcript for transcript in SAMPLE_TRANSCRIPTS if not transcript["expected_follow_up"]
+    ]
 
     assert len(follow_up_cases) == 4
     assert len(complete_cases) == 1
@@ -75,6 +79,8 @@ def test_five_sample_transcripts_cover_follow_up_cases():
 def test_behavioral_prompt_accepts_candidate_answer():
     prompt_template = BEHAVIORAL_PROMPT_TEMPLATE["prompt_template"]
 
-    formatted_prompt = prompt_template.format(candidate_answer=SAMPLE_TRANSCRIPTS[0]["candidate_answer"])
+    formatted_prompt = prompt_template.format(
+        candidate_answer=SAMPLE_TRANSCRIPTS[0]["candidate_answer"]
+    )
 
     assert SAMPLE_TRANSCRIPTS[0]["candidate_answer"] in formatted_prompt
