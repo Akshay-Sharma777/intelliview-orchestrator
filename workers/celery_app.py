@@ -64,12 +64,10 @@ celery_app.conf.update(
         Queue("fast"),
         Queue("slow"),
     ),
-
     # No periodic retry scanner is configured.
     # Interview tasks already use Celery's built-in retry/backoff mechanism
     # via self.retry(). The previous scan_and_dispatch_retries Beat entry
     # referenced an unregistered task and caused errors every 60 seconds.
-
 )
 
 # Auto-discover tasks from workers module

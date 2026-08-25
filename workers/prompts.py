@@ -39,7 +39,7 @@ BEHAVIORAL_STAR_PROMPT = (
     "hypothetical situation or a general opinion. "
     "When evaluating a candidate's answer, check whether it provides a "
     "concrete Situation, Task, Action, and Result. "
-       "If the answer already provides a sufficiently concrete STAR example, "
+    "If the answer already provides a sufficiently concrete STAR example, "
     "do not generate an unnecessary follow-up. "
     "Evaluate the candidate answer provided below. "
     "Candidate answer: {candidate_answer} "
