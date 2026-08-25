@@ -52,7 +52,7 @@ class ApiClient {
   }
   put(path, body) {
     return this.request("PUT", path, body);
- }
+  }
   /** Build the WebSocket URL with the token as a query param. */
   wsUrl(path) {
     const base = (process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000").replace(/^http/, "ws");
@@ -88,18 +88,12 @@ const endpoints = {
   detectFailures: () => api.post("/detect-failures"),
   schedule: () => api.get("/api/schedule"),
   createSchedule: (payload) => api.post("/api/schedule", payload),
-  updateSchedule: (scheduleId, payload) =>
-    api.patch(`/api/schedule/${scheduleId}`, payload),
+  updateSchedule: (scheduleId, payload) => api.patch(`/api/schedule/${scheduleId}`, payload),
   getSettings: () => api.get("/settings"),
+  getRiskConfig: () => api.get("/api/admin/risk-config"),
   updateSettings: (payload) => api.put("/settings", payload),
-  reportWebVitals: (payload) => api.post("/metrics/web-vitals", payload)
-retrySession: (session_id) => api.post(`/retry-session/${session_id}`),
-detectFailures: () => api.post("/detect-failures"),
-getSettings: () => api.get("/settings"),
-getRiskConfig: () => api.get("/api/admin/risk-config"),
-updateSettings: (payload) => api.put("/settings", payload),
-reportWebVitals: (payload) => api.post("/metrics/web-vitals", payload),
-clearCache: () => api.delete("/clear-cache")
+  reportWebVitals: (payload) => api.post("/metrics/web-vitals", payload),
+  clearCache: () => api.delete("/clear-cache")
 };
 export {
   ApiClient,
