@@ -108,6 +108,12 @@ class Settings(BaseSettings):
     smtp_from_email: str = "notifications@intelliview.ai"
     smtp_use_tls: bool = False
 
+    # --- Google Calendar ---
+    google_calendar_enabled: bool = False
+    google_calendar_credentials_file: str = ""
+    google_calendar_token_file: str = "google_calendar_token.json"
+    google_calendar_default_calendar_id: str = "primary"
+
     @field_validator("postgres_host", "postgres_db", "postgres_user")
     @classmethod
     def validate_required_database_fields(cls, value: str) -> str:

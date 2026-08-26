@@ -4,7 +4,7 @@ Handles schedule creation, calendar listings, upcoming events, and triggering em
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from database.db import get_db
 from database.models import Candidate, InterviewSchedule
 from orchestrator.email_service import email_service
+from orchestrator.google_calendar import GoogleCalendarService
 from orchestrator.notification_manager import NotificationManager
 
 logger = logging.getLogger(__name__)
@@ -86,6 +87,40 @@ def create_schedule_routes() -> APIRouter:
                 raise HTTPException(
                     status_code=400,
                     detail="Scheduled date and time must be in the future.",
+                )
+            # Check interviewer availability in Google Calendar.
+            # Interviews use a 60-minute default duration.
+            calendar_service = GoogleCalendarService()
+            interview_end = scheduled_at + timedelta(minutes=60)
+
+            if not calendar_service.is_available(
+                interviewer_id=payload.interviewer_id,
+                start_time=scheduled_at,
+                end_time=interview_end,
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"Interviewer '{payload.interviewer_id}' "
+                        "is unavailable during the requested time slot."
+                    ),
+                )
+
+            # Check Google Calendar availability
+            interview_end = scheduled_at + timedelta(minutes=60)
+            calendar_service = GoogleCalendarService()
+
+            if not calendar_service.is_available(
+                interviewer_id=payload.interviewer_id,
+                start_time=scheduled_at,
+                end_time=interview_end,
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"Interviewer '{payload.interviewer_id}' "
+                        "is not available at the requested time."
+                    ),
                 )
 
             # Create Schedule ORM entry
