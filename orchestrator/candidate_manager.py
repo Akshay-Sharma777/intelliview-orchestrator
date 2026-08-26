@@ -3,6 +3,7 @@ Candidate Manager
 Manages candidate profiles, interview history, and scoring
 """
 
+import csv
 import logging
 import uuid
 from datetime import datetime, timedelta
@@ -70,6 +71,66 @@ class CandidateManager:
             raise
         finally:
             db.close()
+
+    def import_candidates_from_csv(
+        self,
+        csv_file_path: str,
+    ) -> dict[str, Any]:
+        """Import multiple candidates from a CSV file."""
+
+        created = []
+        errors = []
+
+        try:
+            with open(
+                csv_file_path,
+                "r",
+                encoding="utf-8-sig",
+                newline="",
+            ) as file:
+                reader = csv.DictReader(file)
+
+                required_columns = {"name", "email"}
+
+                if not reader.fieldnames or not required_columns.issubset(
+                    set(reader.fieldnames)
+                ):
+                    raise ValueError("CSV must contain name and email columns")
+
+                for row_number, row in enumerate(reader, start=2):
+                    try:
+                        name = (row.get("name") or "").strip()
+                        email = (row.get("email") or "").strip()
+
+                        if not name or not email:
+                            raise ValueError("Name and email are required")
+
+                        candidate = self.create_candidate(
+                            name=name,
+                            email=email,
+                        )
+
+                        created.append(candidate)
+
+                    except Exception as e:
+                        errors.append(
+                            {
+                                "row": row_number,
+                                "error": str(e),
+                            }
+                        )
+
+        except Exception:
+            logger.exception("Error importing candidates from CSV")
+            raise
+
+        return {
+            "imported": len(created),
+            "failed": len(errors),
+            "candidates": created,
+            "errors": errors,
+        }
+
 
     def get_candidate(
         self,
