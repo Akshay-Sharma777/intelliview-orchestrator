@@ -106,7 +106,7 @@ def create_schedule_routes() -> APIRouter:
                     ),
                 )
 
-             # Check Google Calendar availability
+            # Check Google Calendar availability
             interview_end = scheduled_at + timedelta(minutes=60)
             calendar_service = GoogleCalendarService()
 

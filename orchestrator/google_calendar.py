@@ -46,16 +46,10 @@ class GoogleCalendarService:
                 "items": [{"id": interviewer_id}],
             }
 
-            result = (
-                service.freebusy()
-                .query(body=body)
-                .execute()
-            )
+            result = service.freebusy().query(body=body).execute()
 
             busy_slots = (
-                result.get("calendars", {})
-                .get(interviewer_id, {})
-                .get("busy", [])
+                result.get("calendars", {}).get(interviewer_id, {}).get("busy", [])
             )
 
             return not busy_slots
@@ -75,9 +69,7 @@ class GoogleCalendarService:
         credentials_file = self.settings.google_calendar_credentials_file
 
         if not credentials_file:
-            logger.warning(
-                "Google Calendar credentials are not configured"
-            )
+            logger.warning("Google Calendar credentials are not configured")
             return None
 
         credentials_path = Path(credentials_file)
@@ -95,9 +87,7 @@ class GoogleCalendarService:
             from google_auth_oauthlib.flow import InstalledAppFlow
             from googleapiclient.discovery import build
 
-            token_path = Path(
-                self.settings.google_calendar_token_file
-            )
+            token_path = Path(self.settings.google_calendar_token_file)
 
             credentials = None
 
@@ -134,7 +124,5 @@ class GoogleCalendarService:
             )
 
         except Exception:
-            logger.exception(
-                "Failed to initialize Google Calendar service"
-            )
+            logger.exception("Failed to initialize Google Calendar service")
             return None

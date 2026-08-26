@@ -26,11 +26,7 @@ def test_free_calendar_allows_booking():
     mock_google_service = MagicMock()
 
     mock_google_service.freebusy.return_value.query.return_value.execute.return_value = {
-        "calendars": {
-            "interviewer@example.com": {
-                "busy": []
-            }
-        }
+        "calendars": {"interviewer@example.com": {"busy": []}}
     }
 
     with patch.object(
@@ -40,12 +36,8 @@ def test_free_calendar_allows_booking():
     ):
         result = service.is_available(
             interviewer_id="interviewer@example.com",
-            start_time=datetime(
-                2026, 9, 1, 10, 0, tzinfo=timezone.utc
-            ),
-            end_time=datetime(
-                2026, 9, 1, 11, 0, tzinfo=timezone.utc
-            ),
+            start_time=datetime(2026, 9, 1, 10, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 9, 1, 11, 0, tzinfo=timezone.utc),
         )
 
     assert result is True
@@ -78,12 +70,8 @@ def test_busy_calendar_rejects_booking():
     ):
         result = service.is_available(
             interviewer_id="interviewer@example.com",
-            start_time=datetime(
-                2026, 9, 1, 10, 0, tzinfo=timezone.utc
-            ),
-            end_time=datetime(
-                2026, 9, 1, 11, 0, tzinfo=timezone.utc
-            ),
+            start_time=datetime(2026, 9, 1, 10, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 9, 1, 11, 0, tzinfo=timezone.utc),
         )
 
     assert result is False
@@ -101,12 +89,8 @@ def test_calendar_failure_allows_booking():
     ):
         result = service.is_available(
             interviewer_id="interviewer@example.com",
-            start_time=datetime(
-                2026, 9, 1, 10, 0, tzinfo=timezone.utc
-            ),
-            end_time=datetime(
-                2026, 9, 1, 11, 0, tzinfo=timezone.utc
-            ),
+            start_time=datetime(2026, 9, 1, 10, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 9, 1, 11, 0, tzinfo=timezone.utc),
         )
 
     assert result is True
