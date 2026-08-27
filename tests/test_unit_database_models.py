@@ -114,7 +114,6 @@ def test_interview_template_repr():
 
     assert "InterviewTemplate" in repr(template)
     assert "Python Interview" in repr(template)
-    
 
 
 def test_interview_session_repr():
@@ -126,7 +125,9 @@ def test_interview_session_repr():
 
     assert "InterviewSession" in repr(session)
     assert "pending" in repr(session)
-    def test_shared_base():
+
+
+def test_shared_base():
     from database.models._base import Base as ModelBase
 
     assert ModelBase is Base
