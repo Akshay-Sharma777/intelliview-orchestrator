@@ -11,21 +11,21 @@ Tests cover all three functions:
 Testing only — no logic changes made to file_validation.py
 """
 
-import pytest
+import os
+import sys
 from io import BytesIO
 from unittest.mock import AsyncMock, MagicMock
-from fastapi import HTTPException
 
-import sys
-import os
+import pytest
+from fastapi import HTTPException
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from orchestrator.file_validation import (
+    MAX_RESUME_SIZE_BYTES,
     sanitize_filename,
     validate_file_content,
     validate_upload_stream,
-    MAX_RESUME_SIZE_BYTES,
 )
 
 # sanitize_filename() tests
