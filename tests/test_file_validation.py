@@ -134,7 +134,11 @@ class TestValidateFileContent:
         content = b"MZ\x90\x00" + b"\x00" * 100
         ok, msg = validate_file_content(content, "resume.pdf")
         assert ok is False
-        assert "security" in msg.lower() or "malicious" in msg.lower() or "restricted" in msg.lower()
+        assert (
+            "security" in msg.lower()
+            or "malicious" in msg.lower()
+            or "restricted" in msg.lower()
+        )
 
     def test_linux_elf_disguised_as_pdf_rejected(self):
         """Linux ELF binary renamed to .pdf should be blocked"""
@@ -196,7 +200,9 @@ class TestValidateFileContent:
 class TestValidateUploadStream:
     def _make_mock_file(self, content: bytes, chunk_size: int = 64 * 1024):
         """Helper — creates a mock UploadFile that streams content in chunks"""
-        chunks = [content[i : i + chunk_size] for i in range(0, len(content), chunk_size)]
+        chunks = [
+            content[i : i + chunk_size] for i in range(0, len(content), chunk_size)
+        ]
         chunks.append(b"")  # sentinel — signals end of stream
 
         mock_file = MagicMock()
@@ -208,7 +214,9 @@ class TestValidateUploadStream:
         """File well under limit should be read completely"""
         content = b"%PDF-1.4 " + b"A" * 1000
         mock_file = self._make_mock_file(content)
-        result = await validate_upload_stream(mock_file, max_bytes=MAX_RESUME_SIZE_BYTES)
+        result = await validate_upload_stream(
+            mock_file, max_bytes=MAX_RESUME_SIZE_BYTES
+        )
         assert result == content
 
     @pytest.mark.asyncio
@@ -216,7 +224,9 @@ class TestValidateUploadStream:
         """File exactly at 5MB limit should be accepted"""
         content = b"A" * MAX_RESUME_SIZE_BYTES
         mock_file = self._make_mock_file(content)
-        result = await validate_upload_stream(mock_file, max_bytes=MAX_RESUME_SIZE_BYTES)
+        result = await validate_upload_stream(
+            mock_file, max_bytes=MAX_RESUME_SIZE_BYTES
+        )
         assert len(result) == MAX_RESUME_SIZE_BYTES
 
     @pytest.mark.asyncio
@@ -232,7 +242,9 @@ class TestValidateUploadStream:
     async def test_empty_file_returns_empty_bytes(self):
         """Empty upload stream should return empty bytes"""
         mock_file = self._make_mock_file(b"")
-        result = await validate_upload_stream(mock_file, max_bytes=MAX_RESUME_SIZE_BYTES)
+        result = await validate_upload_stream(
+            mock_file, max_bytes=MAX_RESUME_SIZE_BYTES
+        )
         assert result == b""
 
     @pytest.mark.asyncio
