@@ -8,31 +8,29 @@ Tests cover all three functions:
 - validate_file_content()
 - validate_upload_stream()
 
-Testing only — no logic changes to file_validation.py
+Testing only — no logic changes made to file_validation.py
 """
 
-import os
-import sys
-from unittest.mock import AsyncMock, MagicMock
-
 import pytest
+from io import BytesIO
+from unittest.mock import AsyncMock, MagicMock
 from fastapi import HTTPException
 
+import sys
+import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from orchestrator.file_validation import (
-    MAX_RESUME_SIZE_BYTES,
     sanitize_filename,
     validate_file_content,
     validate_upload_stream,
+    MAX_RESUME_SIZE_BYTES,
 )
 
-# ─────────────────────────────────────────────────────────────
-# sanitize_filename() tests
-# ─────────────────────────────────────────────────────────────
-
+#sanitize_filename() tests
 
 class TestSanitizeFilename:
+
     def test_normal_filename_unchanged(self):
         """Normal filename should pass through cleanly"""
         assert sanitize_filename("resume.pdf") == "resume.pdf"
@@ -85,13 +83,11 @@ class TestSanitizeFilename:
         assert result == "My_Resume-2024.pdf"
 
 
-# ─────────────────────────────────────────────────────────────
 # validate_file_content() tests
-# ─────────────────────────────────────────────────────────────
-
 
 class TestValidateFileContent:
-    # ── Valid files ──────────────────────────────────────────
+
+    #Valid files
 
     def test_valid_pdf_accepted(self):
         """Valid PDF with correct magic bytes should be accepted"""
@@ -106,7 +102,7 @@ class TestValidateFileContent:
         ok, msg = validate_file_content(content, "resume.txt")
         assert ok is True
 
-    # ── Empty file ───────────────────────────────────────────
+    #Empty file
 
     def test_empty_file_rejected(self):
         """Empty file should be rejected"""
@@ -114,7 +110,7 @@ class TestValidateFileContent:
         assert ok is False
         assert "empty" in msg.lower()
 
-    # ── Invalid extension ────────────────────────────────────
+    #Invalid extension
 
     def test_invalid_extension_rejected(self):
         """Unsupported extension like .exe should be rejected"""
@@ -127,18 +123,14 @@ class TestValidateFileContent:
         ok, msg = validate_file_content(b"PK\x03\x04", "archive.zip")
         assert ok is False
 
-    # ── Dangerous magic bytes ────────────────────────────────
+    #Dangerous magic bytes
 
     def test_windows_exe_disguised_as_pdf_rejected(self):
         """Windows PE executable renamed to .pdf should be blocked"""
         content = b"MZ\x90\x00" + b"\x00" * 100
         ok, msg = validate_file_content(content, "resume.pdf")
         assert ok is False
-        assert (
-            "security" in msg.lower()
-            or "malicious" in msg.lower()
-            or "restricted" in msg.lower()
-        )
+        assert "security" in msg.lower() or "malicious" in msg.lower() or "restricted" in msg.lower()
 
     def test_linux_elf_disguised_as_pdf_rejected(self):
         """Linux ELF binary renamed to .pdf should be blocked"""
@@ -158,7 +150,7 @@ class TestValidateFileContent:
         ok, msg = validate_file_content(content, "resume.pdf")
         assert ok is False
 
-    # ── PDF specific ─────────────────────────────────────────
+    #PDF specific
 
     def test_pdf_without_pdf_header_rejected(self):
         """PDF file without %PDF- header should be rejected"""
@@ -167,7 +159,7 @@ class TestValidateFileContent:
         assert ok is False
         assert "PDF" in msg or "header" in msg.lower()
 
-    # ── DOCX specific ────────────────────────────────────────
+    #DOCX specific
 
     def test_docx_without_zip_signature_rejected(self):
         """DOCX without PK magic bytes should be rejected"""
@@ -176,7 +168,7 @@ class TestValidateFileContent:
         assert ok is False
         assert "DOCX" in msg or "ZIP" in msg
 
-    # ── TXT specific ─────────────────────────────────────────
+    #TXT specific
 
     def test_txt_with_null_bytes_rejected(self):
         """TXT file containing null bytes should be rejected"""
@@ -187,21 +179,20 @@ class TestValidateFileContent:
 
     def test_txt_with_unicode_content_accepted(self):
         """TXT file with valid unicode content should be accepted"""
-        content = b"My name is Kirti. I am a Python developer."
+        content = "My name is Kirti. I am a Python developer.".encode("utf-8")
         ok, msg = validate_file_content(content, "resume.txt")
         assert ok is True
 
 
-# ─────────────────────────────────────────────────────────────
 # validate_upload_stream() tests
-# ─────────────────────────────────────────────────────────────
-
 
 class TestValidateUploadStream:
+
     def _make_mock_file(self, content: bytes, chunk_size: int = 64 * 1024):
         """Helper — creates a mock UploadFile that streams content in chunks"""
         chunks = [
-            content[i : i + chunk_size] for i in range(0, len(content), chunk_size)
+            content[i: i + chunk_size]
+            for i in range(0, len(content), chunk_size)
         ]
         chunks.append(b"")  # sentinel — signals end of stream
 
@@ -214,9 +205,7 @@ class TestValidateUploadStream:
         """File well under limit should be read completely"""
         content = b"%PDF-1.4 " + b"A" * 1000
         mock_file = self._make_mock_file(content)
-        result = await validate_upload_stream(
-            mock_file, max_bytes=MAX_RESUME_SIZE_BYTES
-        )
+        result = await validate_upload_stream(mock_file, max_bytes=MAX_RESUME_SIZE_BYTES)
         assert result == content
 
     @pytest.mark.asyncio
@@ -224,9 +213,7 @@ class TestValidateUploadStream:
         """File exactly at 5MB limit should be accepted"""
         content = b"A" * MAX_RESUME_SIZE_BYTES
         mock_file = self._make_mock_file(content)
-        result = await validate_upload_stream(
-            mock_file, max_bytes=MAX_RESUME_SIZE_BYTES
-        )
+        result = await validate_upload_stream(mock_file, max_bytes=MAX_RESUME_SIZE_BYTES)
         assert len(result) == MAX_RESUME_SIZE_BYTES
 
     @pytest.mark.asyncio
@@ -242,9 +229,7 @@ class TestValidateUploadStream:
     async def test_empty_file_returns_empty_bytes(self):
         """Empty upload stream should return empty bytes"""
         mock_file = self._make_mock_file(b"")
-        result = await validate_upload_stream(
-            mock_file, max_bytes=MAX_RESUME_SIZE_BYTES
-        )
+        result = await validate_upload_stream(mock_file, max_bytes=MAX_RESUME_SIZE_BYTES)
         assert result == b""
 
     @pytest.mark.asyncio
