@@ -46,6 +46,8 @@ def make_db_session(rows=None):
 @pytest.fixture
 def tracker():
     return SessionTracker()
+
+
 def test_get_completed_sessions_returns_completed_sessions(tracker):
     start_time = datetime.now(timezone.utc) - timedelta(minutes=10)
     end_time = datetime.now(timezone.utc)
@@ -75,6 +77,8 @@ def test_get_completed_sessions_returns_completed_sessions(tracker):
 
     db.execute.assert_called_once()
     db.close.assert_called_once()
+
+
 def test_get_completed_sessions_returns_empty_list_when_no_sessions(tracker):
     db = make_db_session([])
 
@@ -84,6 +88,8 @@ def test_get_completed_sessions_returns_empty_list_when_no_sessions(tracker):
     assert result == []
     db.execute.assert_called_once()
     db.close.assert_called_once()
+
+
 def test_get_stuck_sessions_returns_processing_sessions_past_timeout(tracker):
     start_time = datetime.now(timezone.utc) - timedelta(minutes=60)
 
@@ -110,6 +116,8 @@ def test_get_stuck_sessions_returns_processing_sessions_past_timeout(tracker):
 
     db.execute.assert_called_once()
     db.close.assert_called_once()
+
+
 def test_get_worker_distribution_counts_active_sessions(tracker):
     sessions = [
         make_interview(
@@ -147,6 +155,8 @@ def test_get_worker_distribution_counts_active_sessions(tracker):
 
     db.execute.assert_called_once()
     db.close.assert_called_once()
+
+
 def test_get_failed_sessions_returns_failed_terminal_sessions(tracker):
     start_time = datetime.now(timezone.utc) - timedelta(minutes=20)
     end_time = datetime.now(timezone.utc) - timedelta(minutes=5)
@@ -197,6 +207,8 @@ def test_get_failed_sessions_returns_failed_terminal_sessions(tracker):
 
     db.execute.assert_called_once()
     db.close.assert_called_once()
+
+
 def test_get_active_sessions_filters_by_status(tracker):
     session = make_interview(
         session_id="queued_1",
@@ -215,6 +227,8 @@ def test_get_active_sessions_filters_by_status(tracker):
 
     db.execute.assert_called_once()
     db.close.assert_called_once()
+
+
 def test_get_active_sessions_accepts_iso_since_filter(tracker):
     since = datetime.now(timezone.utc) - timedelta(minutes=30)
 
@@ -236,6 +250,8 @@ def test_get_active_sessions_accepts_iso_since_filter(tracker):
 
     db.execute.assert_called_once()
     db.close.assert_called_once()
+
+
 def test_get_active_sessions_rejects_invalid_since(tracker):
     db = make_db_session([])
 
@@ -247,6 +263,8 @@ def test_get_active_sessions_rejects_invalid_since(tracker):
 
     db.execute.assert_not_called()
     db.close.assert_called_once()
+
+
 def test_get_high_risk_sessions_returns_empty_list_when_none_match(tracker):
     db = make_db_session([])
 
@@ -256,6 +274,8 @@ def test_get_high_risk_sessions_returns_empty_list_when_none_match(tracker):
     assert result == []
     db.execute.assert_called_once()
     db.close.assert_called_once()
+
+
 def test_get_stuck_sessions_returns_empty_list_when_none_are_stuck(tracker):
     db = make_db_session([])
 
@@ -265,6 +285,8 @@ def test_get_stuck_sessions_returns_empty_list_when_none_are_stuck(tracker):
     assert result == []
     db.execute.assert_called_once()
     db.close.assert_called_once()
+
+
 def test_get_worker_distribution_returns_empty_dict_when_no_active_sessions(tracker):
     db = make_db_session([])
 
@@ -274,6 +296,8 @@ def test_get_worker_distribution_returns_empty_dict_when_no_active_sessions(trac
     assert result == {}
     db.execute.assert_called_once()
     db.close.assert_called_once()
+
+
 def test_get_failed_sessions_returns_empty_list_when_none_exist(tracker):
     db = make_db_session([])
 
@@ -283,6 +307,8 @@ def test_get_failed_sessions_returns_empty_list_when_none_exist(tracker):
     assert result == []
     db.execute.assert_called_once()
     db.close.assert_called_once()
+
+
 def test_get_active_sessions_returns_expected_fields(tracker):
     start_time = datetime.now(timezone.utc) - timedelta(minutes=5)
     created_at = datetime.now(timezone.utc) - timedelta(minutes=10)
@@ -316,6 +342,8 @@ def test_get_active_sessions_returns_expected_fields(tracker):
     ]
 
     db.close.assert_called_once()
+
+
 def test_get_high_risk_sessions_returns_sorted_matching_sessions(tracker):
     sessions = [
         make_interview(
@@ -349,6 +377,8 @@ def test_get_high_risk_sessions_returns_sorted_matching_sessions(tracker):
     assert result[1]["risk_score"] == 0.95
 
     db.close.assert_called_once()
+
+
 def test_get_completed_sessions_returns_empty_list_on_db_error(tracker):
     db = MagicMock()
     db.execute.side_effect = RuntimeError("database unavailable")
