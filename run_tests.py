@@ -1,18 +1,20 @@
-import sys
 import os
+import sys
 
 # Add workspace to path so database module can be imported
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
 from database.models.candidate import Base, Candidate
+
 
 def main():
     print("Setting up in-memory SQLite database for testing...")
-    engine = create_engine('sqlite:///:memory:')
+    engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
-    
+
     Session = sessionmaker(bind=engine)
     session = Session()
 
@@ -20,12 +22,12 @@ def main():
     print("Registering: John Doe (john.doe@example.com)")
     c1 = Candidate.register_candidate(session, "John Doe", "john.doe@example.com")
     print(f"Result: needs_review = {c1.needs_review} (Expected: False)")
-    
+
     print("\n--- TEST 2: Near-Duplicate Name ---")
     print("Registering: Jon Doe (different@example.com)")
     c2 = Candidate.register_candidate(session, "Jon Doe", "different@example.com")
     print(f"Result: needs_review = {c2.needs_review} (Expected: True)")
-    
+
     print("\n--- TEST 3: Near-Duplicate Email ---")
     print("Registering: Jane Smith (john.doe1@example.com)")
     c3 = Candidate.register_candidate(session, "Jane Smith", "john.doe1@example.com")
@@ -38,5 +40,6 @@ def main():
 
     print("\nAll tests ran successfully!")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
