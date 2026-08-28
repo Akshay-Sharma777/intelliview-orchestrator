@@ -120,9 +120,30 @@ class CandidateManager:
                             }
                         )
 
-        except Exception:
+        except FileNotFoundError:
+            logger.exception("CSV file not found")
+            return {
+                "imported": 0,
+                "failed": 0,
+                "candidates": [],
+                "errors": [{"error": "CSV file not found"}],
+            }
+        except ValueError as e:
+            logger.exception("Invalid CSV")
+            return {
+                "imported": 0,
+                "failed": 0,
+                "candidates": [],
+                "errors": [{"error": str(e)}],
+            }
+        except Exception as e:
             logger.exception("Error importing candidates from CSV")
-            raise
+            return {
+                "imported": 0,
+                "failed": 0,
+                "candidates": [],
+                "errors": [{"error": str(e)}],
+            }
 
         return {
             "imported": len(created),
