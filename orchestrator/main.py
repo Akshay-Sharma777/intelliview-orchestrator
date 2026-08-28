@@ -2432,8 +2432,6 @@ async def get_moment_analytics(time_range_hours: int = 24):
 
 
 # ========== Dashboard HTML Endpoint ==========
-
-
 @app.get("/dashboard")
 async def get_dashboard():
     """
@@ -2443,15 +2441,12 @@ async def get_dashboard():
         HTML content of the dashboard
     """
     try:
-        import os
+        from anyio import Path
 
-        dashboard_path = os.path.join(
-            os.path.dirname(__file__), "..", "monitoring", "dashboard.html"
-        )
+        dashboard_path = Path(__file__).parent / ".." / "monitoring" / "dashboard.html"
 
-        if os.path.exists(dashboard_path):
-            with open(dashboard_path, encoding="utf-8") as f:
-                html_content = f.read()
+        if await dashboard_path.exists():
+            html_content = await dashboard_path.read_text(encoding="utf-8")
 
             from fastapi.responses import HTMLResponse
 
