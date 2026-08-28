@@ -2,11 +2,12 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from database.db import get_db
+from orchestrator.email_service import email_service
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,8 @@ class CreateCandidateRequest(BaseModel):
     email: str = Field(min_length=1, max_length=255)
     resume_text: str | None = None
     skills: list[str] | None = None
+    status: str | None = "unverified"
+    role: str | None = None
 
 
 class BulkCandidateItem(BaseModel):
@@ -33,12 +36,20 @@ class BulkCandidateItem(BaseModel):
     email: str = Field(min_length=1, max_length=255)
     position: str | None = None
     phone: str | None = None
+    status: str | None = "unverified"
 
 
 class BulkCandidateRequest(BaseModel):
     """Request model for bulk candidate import"""
 
     candidates: list[BulkCandidateItem] = Field(min_length=1)
+
+
+class VerifyCandidateRequest(BaseModel):
+    """Request model for candidate email verification"""
+
+    email: str = Field(..., description="Candidate email address")
+    token: str = Field(..., description="Verification OTP token")
 
 
 class CandidateStatsResponse(BaseModel):
@@ -109,12 +120,17 @@ def create_candidate_routes(candidate_manager) -> APIRouter:
 
     @router.get("/candidates")
     async def list_candidates(
+        search: str | None = Query(default=None),
+        status: str | None = Query(default=None),
+        role: str | None = Query(default=None),
         limit: int = 100,
         session_db: Session = Depends(get_db),
     ):
-        """List all candidates"""
+        """List all candidates with search and filter support"""
         try:
-            candidates = candidate_manager.list_candidates(limit=limit)
+            candidates = candidate_manager.list_candidates(
+                search=search, status=status, role=role, limit=limit
+            )
             return {"count": len(candidates), "candidates": candidates}
         except Exception as e:
             logger.error(f"Error listing candidates: {e!s}")
@@ -132,7 +148,16 @@ def create_candidate_routes(candidate_manager) -> APIRouter:
                 email=request.email,
                 resume_text=request.resume_text,
                 skills=request.skills,
+                status=request.status,
+                role=request.role,
             )
+            # Send verification email
+            if candidate.get("verification_token") and candidate.get("email"):
+                email_service.send_verification_email(
+                    candidate_name=candidate["name"],
+                    candidate_email=candidate["email"],
+                    token=candidate["verification_token"],
+                )
             return candidate
         except Exception as e:
             logger.error(f"Error creating candidate: {e!s}")
@@ -158,10 +183,21 @@ def create_candidate_routes(candidate_manager) -> APIRouter:
                 candidate = candidate_manager.create_candidate(
                     name=item.name,
                     email=item.email,
+                    status=item.status or "unverified",
+                    role=item.position,
                 )
                 # Echo back the non-persisted fields for frontend visibility only.
                 candidate["position"] = item.position
                 candidate["phone"] = item.phone
+
+                # Send verification email
+                if candidate.get("verification_token") and candidate.get("email"):
+                    email_service.send_verification_email(
+                        candidate_name=candidate["name"],
+                        candidate_email=candidate["email"],
+                        token=candidate["verification_token"],
+                    )
+
                 created.append(candidate)
             except Exception as e:
                 logger.error(f"Error creating candidate at row {index}: {e!s}")
@@ -179,6 +215,28 @@ def create_candidate_routes(candidate_manager) -> APIRouter:
             "candidates": created,
             "errors": errors,
         }
+
+    @router.post("/candidates/verify")
+    async def verify_candidate(
+        request: VerifyCandidateRequest,
+        session_db: Session = Depends(get_db),
+    ):
+        """Verify candidate email profile with OTP"""
+        try:
+            success = candidate_manager.verify_candidate(
+                email=request.email,
+                token=request.token,
+            )
+            if not success:
+                raise HTTPException(
+                    status_code=400, detail="Invalid email or verification token"
+                )
+            return {"message": "Candidate verified successfully"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error verifying candidate: {e!s}")
+            raise HTTPException(status_code=500, detail="Error verifying candidate")
 
     @router.get("/candidates/{candidate_id}")
     async def get_candidate(
