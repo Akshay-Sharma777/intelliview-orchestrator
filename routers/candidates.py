@@ -1,8 +1,10 @@
 """Candidate profile routes."""
 
+import tempfile
+import os
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -125,6 +127,43 @@ def create_candidate_routes(candidate_manager) -> APIRouter:
             "candidates": created,
             "errors": errors,
         }
+
+    @router.post("/candidates/import-csv")
+    async def import_candidates_csv(file: UploadFile = File(...)):
+        if not file.filename or not file.filename.lower().endswith(".csv"):
+            raise HTTPException(
+                status_code=400,
+                detail="Only CSV files are allowed",
+            )
+
+        contents = await file.read()
+        if not contents:
+            raise HTTPException(
+                status_code=400,
+                detail="Uploaded CSV file is empty",
+            )
+
+        with tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=".csv",
+        ) as temp_file:
+            temp_file.write(contents)
+            temp_file_path = temp_file.name
+
+        try:
+            result = candidate_manager.import_candidates_from_csv(temp_file_path)
+            return result
+        except ValueError as e:
+            logger.error(f"Invalid CSV for import: {e!s}")
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            logger.error(f"Error importing candidates CSV: {e!s}")
+            raise HTTPException(
+                status_code=400,
+                detail="Error importing candidates from CSV",
+            )
+        finally:
+            os.unlink(temp_file_path)
 
     @router.get("/candidates/{candidate_id}")
     async def get_candidate(
