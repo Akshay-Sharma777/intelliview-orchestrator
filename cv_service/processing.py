@@ -4,12 +4,17 @@ from typing import Any
 
 try:
     import cv2
+except ImportError:
+    cv2 = None
+
+try:
     import mediapipe as mp
 
     HAS_MEDIAPIPE = True
-
 except ImportError:
+    mp = None
     HAS_MEDIAPIPE = False
+
 logger = logging.getLogger(__name__)
 
 

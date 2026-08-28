@@ -44,9 +44,5 @@ mediapipe
 reportlab==4.2.5
 faiss-cpu
 google-generativeai
-
-# === Google Calendar ===
-google-api-python-client==2.198.0
-google-auth==2.40.3
-google-auth-httplib2==0.2.0
-google-auth-oauthlib==1.2.2
+# === Load Testing ===
+locust
