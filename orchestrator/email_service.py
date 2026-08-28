@@ -231,3 +231,7 @@ IntelliView Interview Team
         )
         logger.warning(error_msg)
         return False, error_msg
+
+
+# Default instance
+email_service = EmailService()
