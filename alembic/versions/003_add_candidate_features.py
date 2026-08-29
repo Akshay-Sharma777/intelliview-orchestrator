@@ -45,9 +45,18 @@ def upgrade() -> None:
         ),
     )
     op.add_column("candidates", sa.Column("role", sa.String(length=100), nullable=True))
+    op.add_column(
+        "candidates",
+        sa.Column("deleted_at", sa.DateTime(), nullable=True),
+    )
+    op.create_index(
+        op.f("ix_candidates_deleted_at"), "candidates", ["deleted_at"], unique=False
+    )
 
 
 def downgrade() -> None:
+    op.drop_index(op.f("ix_candidates_deleted_at"), table_name="candidates")
+    op.drop_column("candidates", "deleted_at")
     op.drop_column("candidates", "role")
     op.drop_column("candidates", "status")
     op.drop_column("candidates", "badges")
