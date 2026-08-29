@@ -115,5 +115,5 @@ skip_empty = true
 
 [dependency-groups]
 dev = [
-    "black>=26.5.1",
+    "black==25.1.0",
 ]

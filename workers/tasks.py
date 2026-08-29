@@ -9,14 +9,7 @@ Pipeline:
      has exhausted retries (see `celery_app.task_failure` signal).
 """
 
-from celery import shared_task
-
-
-@shared_task
-def reevaluate_stuck_sessions(threshold_hours=24):
-    print("Re-evaluating stuck sessions...")
-    return "Completed re-evaluation."
-
+from __future__ import annotations
 
 import logging
 import socket
