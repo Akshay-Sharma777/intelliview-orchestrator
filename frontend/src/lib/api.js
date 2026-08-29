@@ -62,8 +62,7 @@ const endpoints = {
   health: () => api.get("/health"),
   startInterview: (payload) => api.post("/start-interview", payload),
   createCandidate: (payload) => api.post("/candidates", payload),
-  getCandidate: (id) => api.get(`/candidates/${id}`),
-  updateCandidate: (id, payload) => api.put(`/candidates/${id}`, payload),sessionStatus: (id) => api.get(`/session-status/${id}`),
+  sessionStatus: (id) => api.get(`/session-status/${id}`),
   activeSessions: () => api.get("/active-sessions"),
   completedSessions: (limit = 50) => api.get(`/completed-sessions?limit=${limit}`),
   failedSessions: (limit = 50) => api.get(`/failed-sessions?limit=${limit}`),
@@ -84,10 +83,8 @@ const endpoints = {
 retrySession: (session_id) => api.post(`/retry-session/${session_id}`),
 detectFailures: () => api.post("/detect-failures"),
 getSettings: () => api.get("/settings"),
-getRiskConfig: () => api.get("/api/admin/risk-config"),
 updateSettings: (payload) => api.put("/settings", payload),
-reportWebVitals: (payload) => api.post("/metrics/web-vitals", payload),
-clearCache: () => api.delete("/clear-cache")
+reportWebVitals: (payload) => api.post("/metrics/web-vitals", payload)
 };
 export {
   ApiClient,

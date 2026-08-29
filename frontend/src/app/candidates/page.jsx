@@ -1,6 +1,5 @@
 "use client";
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { endpoints } from "@/lib/api";
 import useSWR from "swr";
 import {
@@ -736,7 +735,6 @@ export default function CandidatesPage() {
 }
 
 function CandidateRegistrationForm({ onRegistered }) {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [resumeText, setResumeText] = useState("");
@@ -773,12 +771,6 @@ function CandidateRegistrationForm({ onRegistered }) {
       setSkills("");
 
       onRegistered?.(candidate);
-
-      if (candidate.candidate_id) {
-        router.push(
-          `/profile?candidate_id=${encodeURIComponent(candidate.candidate_id)}`
-        );
-      }
     } catch (err) {
       setError(
         err instanceof Error
