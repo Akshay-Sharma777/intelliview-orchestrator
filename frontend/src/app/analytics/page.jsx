@@ -34,7 +34,7 @@ import { Skeleton, ErrorState } from "@/components/States";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { exportAnalyticsCSV } from "@/lib/export";
+import { exportAnalyticsCSV, exportAnalyticsPDF } from "@/lib/export";
 
 
 
@@ -616,6 +616,25 @@ dateRange
     }
 
   },[candidates, stats.data, faults.data]);
+  const handlePDFExport = useCallback(async () => {
+  if (!candidates.length && !stats.data && !faults.data) {
+    toast.error("No data to export");
+    return;
+  }
+
+  try {
+    await exportAnalyticsPDF({
+      candidates,
+      stats: stats.data,
+      faults: faults.data,
+    });
+
+    toast.success("PDF export complete");
+  } catch (error) {
+    console.error("PDF export failed:", error);
+    toast.error("Failed to export PDF");
+  }
+}, [candidates, stats.data, faults.data]);
 
 
 
@@ -1105,6 +1124,13 @@ Export CSV
 
 </button>
 
+<button
+  onClick={handlePDFExport}
+  className="flex items-center gap-2 rounded border border-border bg-bg-card px-3 py-2 text-xs"
+>
+  <Download size={14} />
+  Export PDF
+</button>
 
 </div>
 
