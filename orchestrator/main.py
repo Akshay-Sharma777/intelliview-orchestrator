@@ -2409,7 +2409,7 @@ async def get_dashboard():
             os.path.dirname(__file__), "..", "monitoring", "dashboard.html"
         )
 
-        if os.path.exists(dashboard_path):
+        if os.path.exists(dashboard_path):  # noqa: ASYNC240
             with open(dashboard_path, encoding="utf-8") as f:
                 html_content = f.read()
 
