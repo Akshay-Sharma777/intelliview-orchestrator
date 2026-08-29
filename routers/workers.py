@@ -95,7 +95,7 @@ def create_worker_routes(
         except Exception as e:
             logger.error(f"Error registering worker: {e!s}")
             raise HTTPException(
-                status_code=500, detail=f"Error registering worker: {e!s}"
+                status_code=503, detail=f"Error registering worker: {e!s}"
             )
 
     @router.post("/worker/heartbeat", dependencies=[Depends(require_token)])
@@ -248,7 +248,7 @@ def create_worker_routes(
         except Exception as e:
             logger.error(f"Error fetching worker list: {e!s}")
             raise HTTPException(
-                status_code=500, detail=f"Error fetching worker list: {e!s}"
+                status_code=503, detail=f"Error fetching worker list: {e!s}"
             )
 
     @router.get("/worker-statistics")
@@ -286,7 +286,7 @@ def create_worker_routes(
         except Exception as e:
             logger.error(f"Error generating worker statistics: {e!s}")
             raise HTTPException(
-                status_code=500, detail=f"Error generating worker statistics: {e!s}"
+                status_code=503, detail=f"Error generating worker statistics: {e!s}"
             )
 
     @router.get("/load-status")
@@ -386,7 +386,7 @@ def create_worker_routes(
         except Exception as e:
             logger.error(f"Error deregistering worker: {e!s}")
             raise HTTPException(
-                status_code=500, detail=f"Error deregistering worker: {e!s}"
+                status_code=503, detail=f"Error deregistering worker: {e!s}"
             )
 
     @router.get("/worker-distribution")
@@ -403,7 +403,7 @@ def create_worker_routes(
         except Exception as e:
             logger.error(f"Error fetching worker distribution: {e!s}")
             raise HTTPException(
-                status_code=500, detail="Error fetching worker distribution"
+                status_code=503, detail="Error fetching worker distribution"
             )
 
     return router
