@@ -6,3 +6,9 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 .env
+# Local dev artifacts
+intelliview.db
+.coverage
+htmlcov/
+frontend/node_modules/
+frontend/.next/

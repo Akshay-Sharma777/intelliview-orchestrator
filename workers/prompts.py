@@ -19,6 +19,18 @@ COMMUNICATION_EVALUATION_PROMPT = (
     "pace_appropriateness (0-1)."
 )
 
+POST_INTERVIEW_FEEDBACK_PROMPT = (
+    "You are collecting short feedback from a candidate immediately after an interview. "
+    "Keep the survey brief, friendly, and easy to answer. "
+    "Ask the candidate these questions: "
+    "1. On a scale of 0 to 10, how likely are you to recommend this interview experience "
+    "to a friend or colleague? "
+    "2. What is one thing we could improve about your interview experience? "
+    "The first question must accept a numerical rating from 0 to 10. "
+    "The second question should allow open-text feedback."
+)
+
+
 PRODUCT_MANAGEMENT_PROMPTS = [
     {
         "domain": "product",
