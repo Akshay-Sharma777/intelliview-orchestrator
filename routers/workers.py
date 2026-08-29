@@ -105,8 +105,7 @@ def create_worker_routes(
 
         except Exception as e:
             logger.error(f"Error registering worker: {e!s}")
-            raise HTTPException(
-            )
+            raise HTTPException()
 
     @router.post("/worker/heartbeat", dependencies=[Depends(require_token)])
     async def worker_heartbeat(request: WorkerHeartbeatRequest):

@@ -179,9 +179,7 @@ def test_summary_endpoint_db_integration():
             ).delete()
 
         if "cand_id" in locals():
-            db.query(Candidate).filter(
-                Candidate.candidate_id == cand_id
-            ).delete()
+            db.query(Candidate).filter(Candidate.candidate_id == cand_id).delete()
 
         db.commit()
         db.close()
