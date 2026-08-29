@@ -94,6 +94,7 @@ def test_interview_schedule_orm_model(db_session):
         candidate_id="cand_test_101",
         name="John Doe",
         email="john.doe@example.com",
+        is_verified=True,
     )
 
     db_session.add(candidate)
@@ -174,6 +175,7 @@ def test_create_schedule_api_endpoint(client, db_session):
         candidate_id="cand_test_303",
         name="Bob Architect",
         email="bob.architect@example.com",
+        is_verified=True,
     )
 
     db_session.add(candidate)
@@ -220,6 +222,7 @@ def test_create_schedule_past_date_fails(client, db_session):
         candidate_id="cand_test_past",
         name="Past Candidate",
         email="past@example.com",
+        is_verified=True,
     )
 
     db_session.add(candidate)
@@ -249,6 +252,7 @@ def test_update_schedule_invalid_status_fails(client, db_session):
         candidate_id="cand_test_status",
         name="Status Candidate",
         email="status@example.com",
+        is_verified=True,
     )
 
     db_session.add(candidate)
@@ -719,6 +723,7 @@ def test_list_and_upcoming_schedule_api(client, db_session):
         candidate_id="cand_test_404",
         name="Alice Engineer",
         email="alice.engineer@example.com",
+        is_verified=True,
     )
 
     db_session.add(candidate)
@@ -769,6 +774,7 @@ def test_full_end_to_end_schedule_flow(client, db_session):
         candidate_id="cand_e2e_999",
         name="E2E Tester",
         email="e2e.tester@example.com",
+        is_verified=True,
     )
 
     db_session.add(candidate)
