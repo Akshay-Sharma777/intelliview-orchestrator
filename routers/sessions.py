@@ -1031,6 +1031,98 @@ def create_session_routes(
         }
 
     # ========== Interview Q&A Endpoints ==========
+    async def _submit_answer_for_question(
+        session_id: str,
+        question_id: str,
+        answer_text: str,
+        *,
+        auto_submitted: bool = False,
+    ) -> dict[str, Any]:
+        """Process and persist an answer, including timeout auto-submissions."""
+        session_data = session_manager.get_session(session_id)
+        if not session_data:
+            logger.warning(
+                "Cannot submit answer: session %s not found",
+                session_id,
+            )
+            return {}
+
+        question = question_bank.get_question(question_id)
+        if not question:
+            logger.warning(
+                "Cannot submit answer: question %s not found",
+                question_id,
+            )
+            return {}
+
+        # Prevent duplicate submissions for the same question.
+        answers = session_data.get("answers_provided", [])
+        if any(a.get("question_id") == question_id for a in answers):
+            logger.info(
+                "Question %s already answered for session %s; "
+                "ignoring duplicate submission",
+                question_id,
+                session_id,
+            )
+            return session_data
+
+        from workers.evaluation_pipeline import score_answer
+
+        ai_result = score_answer(question["text"], answer_text)
+        score = ai_result["score"]
+
+        question_bank.record_usage(question_id, score=score)
+
+        questions_asked = session_data.get("questions_asked", [])
+        questions_asked.append(
+            {
+                "question_id": question_id,
+                "text": question["text"],
+                "category": question["category"],
+            }
+        )
+
+        answers.append(
+            {
+                "question_id": question_id,
+                "answer_text": answer_text,
+                "score": score,
+                "auto_submitted": auto_submitted,
+            }
+        )
+
+        feedbacks = session_data.get("feedback_generated", [])
+        feedbacks.append(
+            {
+                "question_id": question_id,
+                "score": score,
+                "reasoning": ai_result["reasoning"],
+                "strengths": ai_result["strengths"],
+                "gaps": ai_result["gaps"],
+                "auto_submitted": auto_submitted,
+            }
+        )
+
+        scores = [a.get("score") for a in answers if a.get("score") is not None]
+        overall_score = sum(scores) / len(scores) if scores else None
+
+        session_data["questions_asked"] = questions_asked
+        session_data["answers_provided"] = answers
+        session_data["feedback_generated"] = feedbacks
+        session_data["overall_score"] = overall_score
+
+        session_manager.state_sync.set_session_state(
+            session_id,
+            session_data,
+        )
+
+        return {
+            "session_data": session_data,
+            "question": question,
+            "score": score,
+            "feedback": ai_result["reasoning"],
+            "overall_score": overall_score,
+        }
 
     @router.post("/interviews/ask-question")
     async def ask_question(
@@ -1055,6 +1147,24 @@ def create_session_routes(
                     status_code=404, detail="No more questions available"
                 )
 
+            # Start timeout timer for this question
+            async def handle_question_timeout(
+                session_id: str,
+                question_id: str,
+            ) -> None:
+                await _submit_answer_for_question(
+                    session_id,
+                    question_id,
+                    "",
+                    auto_submitted=True,
+                )
+
+            session_manager.start_question_timer(
+                request.session_id,
+                question["question_id"],
+                handle_question_timeout,
+            )
+
             return AskQuestionResponse(
                 session_id=request.session_id,
                 question_id=question["question_id"],
@@ -1073,76 +1183,44 @@ def create_session_routes(
         request: SubmitAnswerRequest,
         session_db: Session = Depends(get_db),
     ):
-        """Submit an answer and get feedback"""
+        """Submit an answer and get feedback."""
         try:
-            session_data = session_manager.get_session(request.session_id)
-            if not session_data:
-                raise HTTPException(status_code=404, detail="Session not found")
-
-            question = question_bank.get_question(request.question_id)
-            if not question:
-                raise HTTPException(status_code=404, detail="Question not found")
-
-            question_bank.record_usage(request.question_id, score=request.score)
-
-            from workers.evaluation_pipeline import score_answer
-
-            ai_result = score_answer(question["text"], request.answer_text)
-            score = ai_result["score"]
-            feedback = ai_result["reasoning"]
-
-            questions_asked = session_data.get("questions_asked", [])
-            questions_asked.append(
-                {
-                    "question_id": request.question_id,
-                    "text": question["text"],
-                    "category": question["category"],
-                }
+            session_manager.cancel_question_timer(
+                request.session_id,
+                request.question_id,
             )
 
-            answers = session_data.get("answers_provided", [])
-            answers.append(
-                {
-                    "question_id": request.question_id,
-                    "answer_text": request.answer_text,
-                    "score": score,
-                }
-            )
-            feedbacks = session_data.get("feedback_generated", [])
-            feedbacks.append(
-                {
-                    "question_id": request.question_id,
-                    "score": score,
-                    "reasoning": ai_result["reasoning"],
-                    "strengths": ai_result["strengths"],
-                    "gaps": ai_result["gaps"],
-                }
+            result = await _submit_answer_for_question(
+                request.session_id,
+                request.question_id,
+                request.answer_text,
             )
 
-            scores = [a.get("score") for a in answers if a.get("score") is not None]
-            overall_score = sum(scores) / len(scores) if scores else None
+            if not result:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Session or question not found",
+                )
 
-            session_data["questions_asked"] = questions_asked
-            session_data["answers_provided"] = answers
-            session_data["feedback_generated"] = feedbacks
-            session_data["overall_score"] = overall_score
-            session_manager.state_sync.set_session_state(
-                request.session_id, session_data
-            )
+            session_data = result["session_data"]
 
             return SubmitAnswerResponse(
                 session_id=request.session_id,
                 question_id=request.question_id,
-                feedback=feedback,
-                score=score,
-                questions_asked=len(questions_asked),
-                overall_score=overall_score,
+                feedback=result["feedback"],
+                score=result["score"],
+                questions_asked=len(session_data.get("questions_asked", [])),
+                overall_score=result["overall_score"],
             )
+
         except HTTPException:
             raise
         except Exception as e:
             logger.error(f"Error submitting answer: {e!s}")
-            raise HTTPException(status_code=500, detail="Error submitting answer")
+            raise HTTPException(
+                status_code=500,
+                detail="Error submitting answer",
+            )
 
     # ========== Fault Tolerance & Recovery Endpoints ==========
 
