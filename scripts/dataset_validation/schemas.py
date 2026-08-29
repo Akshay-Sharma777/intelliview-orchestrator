@@ -54,13 +54,6 @@ EVALUATION_DATASET_SCHEMA = {
     "numeric_ranges": {
         "expected_score": (0, 100),
     },
-    "conditional_required": [
-        {
-            "when_field": "expected_label",
-            "when_value": "hallucinated",
-            "then_field": "expected_score",
-        },
-    ],
 }
 
 NEW_DATASET_SCHEMA = {

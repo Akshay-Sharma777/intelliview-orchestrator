@@ -166,4 +166,22 @@ def test_summary_endpoint_db_integration():
         assert data["metrics"]["todays_interviews"] == 1
 
     finally:
+        db.rollback()
+
+        if "sess_id" in locals():
+            db.query(InterviewSession).filter(
+                InterviewSession.session_id == sess_id
+            ).delete()
+
+        if "sched_id" in locals():
+            db.query(InterviewSchedule).filter(
+                InterviewSchedule.id == sched_id
+            ).delete()
+
+        if "cand_id" in locals():
+            db.query(Candidate).filter(
+                Candidate.candidate_id == cand_id
+            ).delete()
+
+        db.commit()
         db.close()
