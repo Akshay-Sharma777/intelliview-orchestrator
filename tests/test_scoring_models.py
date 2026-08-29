@@ -1,4 +1,7 @@
-from workers.scoring_models import ExperimentalRiskModel, WeightedRiskModel
+from workers.scoring_models import (
+    ExperimentalRiskModel,
+    WeightedRiskModel,
+)
 
 
 def test_scoring_output_ranges():
