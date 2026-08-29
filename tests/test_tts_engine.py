@@ -1,9 +1,14 @@
+import shutil
+
 import pytest
 
 from workers.tts_engine import synthesize_speech
 
 
 def test_synthesize_speech_returns_audio_bytes():
+    if not (shutil.which("espeak-ng") or shutil.which("espeak")):
+        pytest.skip("eSpeak/eSpeak-ng not installed on this system")
+
     audio = synthesize_speech("Tell me about your experience with Python.")
 
     assert isinstance(audio, bytes)
