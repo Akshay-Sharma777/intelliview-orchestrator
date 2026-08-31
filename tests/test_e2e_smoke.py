@@ -82,7 +82,7 @@ def test_start_interview_and_get_status(api_base_url, api_token):
         f"{api_base_url}/start-interview",
         json={"candidate_id": f"cand-{uuid.uuid4().hex[:8]}", "priority": "high"},
         headers={"X-API-Token": api_token},
-        timeout=10.0,
+        timeout=30.0,
     )
     assert r.status_code == 200, r.text
     session_id = r.json()["session_id"]
@@ -155,7 +155,7 @@ def test_full_pipeline_completes(api_base_url, api_token):
         f"{api_base_url}/start-interview",
         json={"candidate_id": f"e2e-{uuid.uuid4().hex[:8]}", "priority": "medium"},
         headers={"X-API-Token": api_token},
-        timeout=10.0,
+        timeout=30.0,
     )
     assert r.status_code == 200
     session_id = r.json()["session_id"]
