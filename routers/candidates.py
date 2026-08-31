@@ -4,8 +4,7 @@ import logging
 import os
 import tempfile
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
