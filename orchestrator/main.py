@@ -91,6 +91,7 @@ from orchestrator.state_sync import StateSynchronizer
 from orchestrator.worker_registry import WorkerRegistry
 from routers.ab_testing import create_ab_testing_routes
 from routers.candidates import create_candidate_routes
+from routers.integrity import router as integrity_router
 from routers.practice_sessions import router as practice_sessions_router
 from routers.questions import create_question_routes
 from routers.schedule import create_schedule_routes
