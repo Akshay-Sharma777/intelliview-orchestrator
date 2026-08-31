@@ -218,6 +218,7 @@ def create_candidate_routes(candidate_manager) -> APIRouter:
         except Exception as e:
             logger.error(f"Error verifying candidate: {e!s}")
             raise HTTPException(status_code=500, detail="Error verifying candidate")
+
     @router.post("/candidates/import-csv")
     async def import_candidates_csv(file: UploadFile = File(...)):
         if not file.filename or not file.filename.lower().endswith(".csv"):
