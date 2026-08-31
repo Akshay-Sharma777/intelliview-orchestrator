@@ -992,26 +992,66 @@ def create_session_routes(
 
     @router.get("/interviews")
     async def list_interviews(
+        page: int = 1,
         limit: int = 100,
-        offset: int = 0,
+        sort_by: str = "date",
         status: str | None = None,
         session_db: Session = Depends(get_db),
     ):
         """
-        List interview sessions, newest first.
+        List interview sessions with pagination and sorting.
         """
 
+        # Validate page
+        if page < 1:
+            raise HTTPException(
+                status_code=400,
+                detail="page must be greater than or equal to 1",
+            )
+
+        # Validate limit
+        if limit < 1:
+            raise HTTPException(
+                status_code=400,
+                detail="limit must be greater than or equal to 1",
+            )
+
+        if limit > 1000:
+            raise HTTPException(
+                status_code=400,
+                detail="limit must be less than or equal to 1000",
+            )
+
+        # Validate sorting option
+        allowed_sort_fields = {"date", "risk_score", "status"}
+
+        if sort_by not in allowed_sort_fields:
+            raise HTTPException(
+                status_code=400,
+                detail="sort_by must be one of: date, risk_score, status",
+            )
+
+        # Base query
         stmt = select(InterviewSession)
 
+        # Existing status filter
         if status:
             stmt = stmt.where(InterviewSession.status == status.upper())
 
-        stmt = (
-            stmt.order_by(InterviewSession.created_at.desc().nullslast())
-            .offset(offset)
-            .limit(limit)
-        )
+        # Sorting
+        if sort_by == "date":
+            stmt = stmt.order_by(InterviewSession.created_at.desc().nullslast())
+        elif sort_by == "risk_score":
+            stmt = stmt.order_by(InterviewSession.risk_score.desc().nullslast())
+        elif sort_by == "status":
+            stmt = stmt.order_by(InterviewSession.status.asc().nullslast())
+
+        # Pagination
+        offset = (page - 1) * limit
+        stmt = stmt.offset(offset).limit(limit)
+
         rows = session_db.execute(stmt).scalars().all()
+
         return {
             "total_count": len(rows),
             "sessions": [

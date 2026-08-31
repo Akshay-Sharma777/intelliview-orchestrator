@@ -2475,16 +2475,13 @@ async def get_dashboard():
         HTML content of the dashboard
     """
     try:
-        import os
+        from anyio import Path
+        from fastapi.responses import HTMLResponse
 
-        dashboard_path = os.path.join(
-            os.path.dirname(__file__), "..", "monitoring", "dashboard.html"
-        )
+        dashboard_path = Path(__file__).parent / ".." / "monitoring" / "dashboard.html"
 
-        if os.path.exists(dashboard_path):
-            with open(dashboard_path, encoding="utf-8") as f:
-                html_content = f.read()
-
+        if await dashboard_path.exists():
+            html_content = await dashboard_path.read_text(encoding="utf-8")
             return HTMLResponse(content=html_content)
         raise HTTPException(status_code=404, detail="Dashboard HTML not found")
     except HTTPException:

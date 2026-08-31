@@ -23,6 +23,15 @@ class CreateCandidateRequest(BaseModel):
     role: str | None = None
 
 
+class UpdateCandidateRequest(BaseModel):
+    """Request model for updating a candidate profile."""
+
+    name: str = Field(min_length=1, max_length=200)
+    email: str = Field(min_length=1, max_length=255)
+    resume_text: str | None = None
+    skills: list[str] | None = None
+
+
 class BulkCandidateItem(BaseModel):
     """A single candidate row within a bulk import request.
 
@@ -95,7 +104,10 @@ def create_candidate_routes(candidate_manager) -> APIRouter:
             return {"count": len(candidates), "candidates": candidates}
         except Exception as e:
             logger.error(f"Error listing candidates: {e!s}")
-            raise HTTPException(status_code=500, detail="Error listing candidates")
+            raise HTTPException(
+                status_code=500,
+                detail="Error listing candidates",
+            )
 
     @router.post("/candidates")
     async def create_candidate(
@@ -122,7 +134,10 @@ def create_candidate_routes(candidate_manager) -> APIRouter:
             return candidate
         except Exception as e:
             logger.error(f"Error creating candidate: {e!s}")
-            raise HTTPException(status_code=500, detail="Error creating candidate")
+            raise HTTPException(
+                status_code=500,
+                detail="Error creating candidate",
+            )
 
     @router.post("/candidates/bulk")
     async def bulk_create_candidates(
@@ -147,6 +162,7 @@ def create_candidate_routes(candidate_manager) -> APIRouter:
                     status=item.status or "unverified",
                     role=item.position,
                 )
+
                 # Echo back the non-persisted fields for frontend visibility only.
                 candidate["position"] = item.position
                 candidate["phone"] = item.phone
@@ -160,6 +176,7 @@ def create_candidate_routes(candidate_manager) -> APIRouter:
                     )
 
                 created.append(candidate)
+
             except Exception as e:
                 logger.error(f"Error creating candidate at row {index}: {e!s}")
                 errors.append(
@@ -207,14 +224,58 @@ def create_candidate_routes(candidate_manager) -> APIRouter:
         """Get candidate details by ID"""
         try:
             candidate = candidate_manager.get_candidate(candidate_id)
+
             if not candidate:
-                raise HTTPException(status_code=404, detail="Candidate not found")
+                raise HTTPException(
+                    status_code=404,
+                    detail="Candidate not found",
+                )
+
             return candidate
+
         except HTTPException:
             raise
+
         except Exception as e:
             logger.error(f"Error fetching candidate: {e!s}")
-            raise HTTPException(status_code=500, detail="Error fetching candidate")
+            raise HTTPException(
+                status_code=500,
+                detail="Error fetching candidate",
+            )
+
+    @router.put("/candidates/{candidate_id}")
+    async def update_candidate(
+        candidate_id: str,
+        request: UpdateCandidateRequest,
+        session_db: Session = Depends(get_db),
+    ):
+        """Update editable candidate profile fields."""
+        try:
+            candidate = candidate_manager.update_candidate(
+                candidate_id=candidate_id,
+                name=request.name,
+                email=request.email,
+                resume_text=request.resume_text,
+                skills=request.skills,
+            )
+
+            if not candidate:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Candidate not found",
+                )
+
+            return candidate
+
+        except HTTPException:
+            raise
+
+        except Exception as e:
+            logger.error(f"Error updating candidate: {e!s}")
+            raise HTTPException(
+                status_code=500,
+                detail="Error updating candidate",
+            )
 
     @router.get("/candidates/{candidate_id}/history")
     async def get_candidate_history(
@@ -224,16 +285,28 @@ def create_candidate_routes(candidate_manager) -> APIRouter:
         """Get candidate interview history"""
         try:
             candidate = candidate_manager.get_candidate(candidate_id)
+
             if not candidate:
-                raise HTTPException(status_code=404, detail="Candidate not found")
+                raise HTTPException(
+                    status_code=404,
+                    detail="Candidate not found",
+                )
+
             history = candidate_manager.get_interview_history(candidate_id)
-            return {"candidate_id": candidate_id, "history": history}
+
+            return {
+                "candidate_id": candidate_id,
+                "history": history,
+            }
+
         except HTTPException:
             raise
+
         except Exception as e:
             logger.error(f"Error fetching candidate history: {e!s}")
             raise HTTPException(
-                status_code=500, detail="Error fetching candidate history"
+                status_code=500,
+                detail="Error fetching candidate history",
             )
 
     return router
