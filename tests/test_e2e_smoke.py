@@ -1,4 +1,4 @@
-﻿"""
+"""
 End-to-end smoke tests against a running stack.
 
 Run the stack first:
@@ -70,7 +70,7 @@ def test_start_interview_and_get_status(api_base_url, api_token):
     for _ in range(5):
         r = httpx.post(
             f"{api_base_url}/start-interview",
-            headers=API_HEADERS,
+            headers={"X-API-Token": api_token},
             json={"candidate_id": f"cand-{uuid.uuid4().hex[:8]}", "priority": "high"},
             timeout=30.0,
         )
@@ -143,7 +143,7 @@ def test_full_pipeline_completes(api_base_url, api_token):
     for _ in range(5):
         r = httpx.post(
             f"{api_base_url}/start-interview",
-            headers=API_HEADERS,
+            headers={"X-API-Token": api_token},
             json={"candidate_id": f"e2e-{uuid.uuid4().hex[:8]}", "priority": "medium"},
             timeout=30.0,
         )
