@@ -75,6 +75,13 @@ def create_schedule_routes() -> APIRouter:
                     detail=f"Candidate with ID '{payload.candidate_id}' not found.",
                 )
 
+            # Ensure candidate is verified
+            if not getattr(candidate, "is_verified", False):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Candidate must be verified ({candidate.status}) before booking an interview slot.",
+                )
+
             # Ensure datetime is timezone-aware
             scheduled_at = payload.scheduled_at
             if scheduled_at.tzinfo is None:
