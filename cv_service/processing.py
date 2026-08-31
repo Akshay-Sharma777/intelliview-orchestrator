@@ -13,7 +13,6 @@ import logging
 import time
 from typing import Any
 
-
 try:
     import mediapipe as mp
 
