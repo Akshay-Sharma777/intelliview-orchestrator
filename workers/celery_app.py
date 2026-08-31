@@ -50,12 +50,15 @@ celery_app.conf.update(
             "task": "workers.tasks.scan_and_dispatch_retries",
             "schedule": 60.0,
         },
+        "detect-no-shows": {
+            "task": "workers.tasks.detect_no_shows",
+            "schedule": 60.0,
+        },
     },
 )
 
 # Auto-discover tasks from workers module
 celery_app.autodiscover_tasks(["workers"])
-
 
 _SESSION_TASK_NAMES: frozenset[str] = frozenset(
     {
