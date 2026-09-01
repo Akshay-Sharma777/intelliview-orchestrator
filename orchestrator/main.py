@@ -1135,6 +1135,7 @@ def _build_risk_report_pdf(report: dict) -> Response:
 
 app.include_router(create_candidate_routes(candidate_manager=candidate_manager))
 app.include_router(practice_sessions_router)
+app.include_router(integrity_router)
 app.include_router(create_schedule_routes())
 app.include_router(create_question_routes(question_bank=question_bank))
 app.include_router(create_settings_routes())
