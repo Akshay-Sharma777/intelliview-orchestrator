@@ -246,7 +246,14 @@ def test_start_interview_rejects_retry_after_limit():
 
     redis_client = MagicMock()
 
+    scheduler_mock = MagicMock()
+    scheduler_mock.can_accept_task.return_value = True
+
     with (
+        patch(
+            "orchestrator.main.scheduler",
+            scheduler_mock,
+        ),
         patch(
             "orchestrator.main.get_redis_client",
             return_value=redis_client,
