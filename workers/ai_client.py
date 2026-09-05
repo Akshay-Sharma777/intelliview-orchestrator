@@ -93,6 +93,19 @@ except ImportError:
     HAS_MEDIAPIPE = False
     logger.info("MediaPipe/OpenCV not installed — falling back to mock face detection")
 
+try:
+    import pyttsx3
+
+    _tts_engine = pyttsx3.init()
+    _tts_engine.setProperty("rate", 175)  # speaking speed (words per minute)
+    _tts_engine.setProperty("volume", 1.0)  # volume 0.0 to 1.0
+    HAS_TTS = True
+    logger.info("pyttsx3 TTS engine initialised successfully")
+except Exception:
+    _tts_engine = None
+    HAS_TTS = False
+    logger.info("pyttsx3 not available — TTS will be skipped")
+
 
 # ---------------------------------------------------------------------------
 # Helper function to construct standard usage dictionary
@@ -580,3 +593,78 @@ def detect_hand_gaze(
     except Exception as exc:
         logger.warning("MediaPipe hand detection failed: %s", exc)
         return None
+
+
+def speak_text(text: str) -> bool:
+    """
+    Convert text to speech using pyttsx3 (local, no API key required).
+
+    This is the v1 TTS provider. It runs entirely offline and requires
+    no external dependency or API key.
+
+    Args:
+        text: The question or text string to be spoken aloud.
+
+    Returns:
+        True if speech synthesis succeeded, False otherwise.
+
+    Upgrade path:
+        For v2, replace pyttsx3 with a cloud TTS provider such as:
+        - Google Cloud Text-to-Speech (natural voices, SSML support)
+        - AWS Polly (low latency, neural voices)
+        - ElevenLabs (most natural, emotion-aware)
+        See docs/tts-upgrade-path.md for full trade-off comparison.
+    """
+    if not HAS_TTS:
+        logger.warning("TTS unavailable — pyttsx3 not installed")
+        return False
+
+    if not text or not text.strip():
+        logger.warning("speak_text() called with empty text — skipping")
+        return False
+
+    try:
+        _tts_engine.say(text)
+        _tts_engine.runAndWait()
+        logger.info("TTS spoke successfully: %.50s...", text)
+        return True
+    except Exception as exc:
+        logger.warning("TTS speak_text() failed: %s", exc)
+        return False
+
+
+# ----------------------------------------------
+# TTS (Text-to-Speech) — pyttsx3 local provider
+# ----------------------------------------------
+
+
+def speak_text_to_file(text: str, output_path: str) -> bool:
+    """
+    Save synthesized speech to an audio file (.mp3 or .wav).
+
+    Useful when the frontend needs to play audio from a URL
+    instead of triggering local system speakers.
+
+    Args:
+        text: Text to synthesize.
+        output_path: File path to save audio (e.g. 'output.mp3')
+
+    Returns:
+        True if file was saved successfully, False otherwise.
+    """
+    if not HAS_TTS:
+        logger.warning("TTS unavailable — pyttsx3 not installed")
+        return False
+
+    if not text or not text.strip():
+        logger.warning("speak_text_to_file() called with empty text — skipping")
+        return False
+
+    try:
+        _tts_engine.save_to_file(text, output_path)
+        _tts_engine.runAndWait()
+        logger.info("TTS audio saved to: %s", output_path)
+        return True
+    except Exception as exc:
+        logger.warning("TTS save_to_file() failed: %s", exc)
+        return False
