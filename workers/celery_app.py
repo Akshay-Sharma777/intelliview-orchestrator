@@ -42,14 +42,7 @@ celery_app.conf.update(
         Queue("fast"),
         Queue("slow"),
     ),
-    task_routes={
-        "workers.tasks.scan_and_dispatch_retries": {"queue": "fast"},
-    },
     beat_schedule={
-        "scan-due-retries": {
-            "task": "workers.tasks.scan_and_dispatch_retries",
-            "schedule": 60.0,
-        },
         "detect-no-shows": {
             "task": "workers.tasks.detect_no_shows",
             "schedule": 60.0,
