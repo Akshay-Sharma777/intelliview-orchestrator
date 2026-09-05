@@ -469,7 +469,7 @@ export default function InterviewPage() {
                   <span className="text-muted">WS</span>
                   {reconnecting ? (
                     <Badge variant="warning">
-                      Reconnecting{retryAttempt ? `… (attempt ${retryAttempt})` : "…"}
+                      Reconnecting{retryAttempt ? `ï¿½ (attempt ${retryAttempt})` : "ï¿½"}
                     </Badge>
                   ) : connected ? (
                     <Badge variant="success">Connected</Badge>
