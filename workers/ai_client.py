@@ -9,6 +9,7 @@ import logging
 import os
 import time
 from typing import Any
+from workers.tts_engine import synthesize_speech
 
 logger = logging.getLogger(__name__)
 AUDIO_MAX_RETRIES = int(os.getenv("AUDIO_MAX_RETRIES", "3"))
@@ -368,6 +369,34 @@ def grok_completion(
     except Exception as exc:
         logger.warning("Grok completion failed: %s", exc)
         return None, _build_usage_dict("grok", model)
+
+
+# ---------------------------------------------------------------------------
+# Text-to-Speech helpers
+# ---------------------------------------------------------------------------
+
+
+def text_to_speech(text: str) -> bytes:
+    """Convert interview question text to WAV audio bytes.
+
+    Raises:
+        ValueError: If the input text is empty.
+        RuntimeError: If speech synthesis fails.
+    """
+    if not text or not text.strip():
+        raise ValueError("TTS text must not be empty.")
+
+    try:
+        audio = synthesize_speech(text)
+        if not audio:
+            raise RuntimeError("TTS synthesis returned empty audio.")
+
+        return audio
+    except ValueError:
+        raise
+    except Exception as exc:
+        logger.error("TTS synthesis failed: %s", exc)
+        raise RuntimeError(f"TTS synthesis failed: {exc}") from exc
 
 
 # ---------------------------------------------------------------------------

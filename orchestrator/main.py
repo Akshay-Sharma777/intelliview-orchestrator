@@ -14,7 +14,7 @@ Integrates:
 - Worker Registry for node tracking
 - Task Queue integration with Celery
 """
-
+import base64
 import io
 import json
 import logging
@@ -111,6 +111,7 @@ from routers.templates import create_template_routes
 from routers.workers import create_worker_routes
 from workers.ab_testing_framework import ABTestingFramework
 from workers.bias_auditor import BiasAuditor
+from workers.ai_client import text_to_speech
 
 # Configure logging after imports so startup messages are structured.
 configure_logging()
@@ -560,6 +561,7 @@ class AskQuestionResponse(BaseModel):
     text: str
     category: str
     difficulty: str
+    audio_base64: str | None = None
 
 
 class SubmitAnswerRequest(BaseModel):
@@ -1690,12 +1692,18 @@ async def ask_question(
         if not question:
             raise HTTPException(status_code=404, detail="No more questions available")
 
+        audio_bytes = text_to_speech(question["text"])
+        audio_base64 = (
+            base64.b64encode(audio_bytes).decode("utf-8") if audio_bytes else None
+        )
+
         return AskQuestionResponse(
             session_id=request.session_id,
             question_id=question["question_id"],
             text=question["text"],
             category=question["category"],
             difficulty=question["difficulty"],
+            audio_base64=audio_base64,
         )
     except HTTPException:
         raise
