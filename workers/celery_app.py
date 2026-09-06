@@ -48,7 +48,7 @@ celery_app.conf.update(
     beat_schedule={
         "scan-due-retries": {
             "task": "workers.tasks.scan_and_dispatch_retries",
-            "schedule": 60.0,
+            "schedule": 10.0,
         },
     },
 )
