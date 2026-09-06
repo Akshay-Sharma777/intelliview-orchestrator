@@ -110,8 +110,8 @@ from routers.settings import create_settings_routes
 from routers.templates import create_template_routes
 from routers.workers import create_worker_routes
 from workers.ab_testing_framework import ABTestingFramework
-from workers.bias_auditor import BiasAuditor
 from workers.ai_client import text_to_speech
+from workers.bias_auditor import BiasAuditor
 
 # Configure logging after imports so startup messages are structured.
 configure_logging()
