@@ -114,7 +114,7 @@ def test_email_service_handles_smtp_error():
     """Test EmailService catches SMTP exceptions and logs error."""
     email_svc = EmailService()
 
-    with patch("smtplib.SMTP", side_effect=Exception("SMTP Connection Refused")):
+    with patch("smtplib.SMTP", side_effect=OSError("SMTP Connection Refused")):
         success, msg = email_svc.send_interview_confirmation(
             candidate_name="Jane Doe",
             candidate_email="jane.doe@example.com",
