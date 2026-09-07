@@ -2,7 +2,6 @@
 Unit and integration tests for Interview Scheduling and Email Notification System.
 """
 
-import smtplib
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
@@ -115,10 +114,7 @@ def test_email_service_handles_smtp_error():
     """Test EmailService catches SMTP exceptions and logs error."""
     email_svc = EmailService()
 
-    with patch(
-        "smtplib.SMTP",
-        side_effect=smtplib.SMTPException("SMTP Connection Refused"),
-    ):
+    with patch("smtplib.SMTP", side_effect=Exception("SMTP Connection Refused")):
         success, msg = email_svc.send_interview_confirmation(
             candidate_name="Jane Doe",
             candidate_email="jane.doe@example.com",
