@@ -15,7 +15,6 @@ Integrates:
 - Task Queue integration with Celery
 """
 
-import asyncio
 import io
 import json
 import logging
@@ -25,10 +24,8 @@ import time
 import time as _time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from pathlib import Path
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
