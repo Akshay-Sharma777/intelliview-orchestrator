@@ -59,6 +59,102 @@ def split_audio_into_chunks(
     return chunk_paths, chunk_temp_dir
 
 
+class StreamingWhisperTranscriber:
+    """Incrementally transcribe incoming audio chunks with Whisper."""
+
+    def __init__(
+        self,
+        sample_rate: int = 16000,
+        chunk_duration_ms: int = CHUNK_DURATION_MS,
+    ) -> None:
+        self.sample_rate = sample_rate
+        self.chunk_duration_ms = chunk_duration_ms
+        self._buffer = None
+        self._buffer_duration_ms = 0
+
+    def add_chunk(self, audio_chunk: Any) -> list[dict[str, Any]]:
+        """Add an audio chunk and transcribe complete windows.
+
+        Args:
+            audio_chunk: Audio samples as a NumPy array.
+
+        Returns:
+            Incremental transcription results for processed windows.
+        """
+        import numpy as np
+
+        chunk = np.asarray(audio_chunk, dtype=np.float32)
+
+        if chunk.size == 0:
+            return []
+
+        if self._buffer is None:
+            self._buffer = chunk
+        else:
+            self._buffer = np.concatenate((self._buffer, chunk))
+
+        self._buffer_duration_ms = int(
+            len(self._buffer) / self.sample_rate * 1000
+        )
+
+        results = []
+
+        while self._buffer_duration_ms >= self.chunk_duration_ms:
+            window_samples = int(
+                self.sample_rate * self.chunk_duration_ms / 1000
+            )
+
+            current_chunk = self._buffer[:window_samples]
+            self._buffer = self._buffer[window_samples:]
+
+            result = self._transcribe_chunk(current_chunk)
+
+            if result is not None:
+                results.append(result)
+
+            self._buffer_duration_ms = int(
+                len(self._buffer) / self.sample_rate * 1000
+            )
+
+        return results
+
+    def _transcribe_chunk(self, audio_chunk: Any) -> dict[str, Any] | None:
+        """Transcribe one in-memory audio window."""
+        from workers.ai_client import transcribe_audio_file
+
+        result = transcribe_audio_file(
+            audio_chunk,
+            raw_audio=True,
+        )
+
+        if result is None:
+            return None
+
+        return {
+            "text": result.get("text", "").strip(),
+            "language": result.get("language", "en"),
+            "segments": result.get("segments", []),
+            "duration_seconds": round(
+                len(audio_chunk) / self.sample_rate,
+                3,
+            ),
+            "timestamp": time.time(),
+        }
+
+    def finish(self) -> list[dict[str, Any]]:
+        """Transcribe any remaining buffered audio."""
+        if self._buffer is None or len(self._buffer) == 0:
+            return []
+
+        remaining = self._buffer
+        self._buffer = None
+        self._buffer_duration_ms = 0
+
+        result = self._transcribe_chunk(remaining)
+
+        return [result] if result is not None else []
+
+
 # ---------------------------------------------------------------------------
 # Real detection helpers (Whisper / pyannote / OpenAI) with fallback to stubs
 # ---------------------------------------------------------------------------

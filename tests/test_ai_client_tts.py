@@ -1,4 +1,5 @@
 from unittest.mock import patch
+
 import pytest
 
 from workers.ai_client import text_to_speech
