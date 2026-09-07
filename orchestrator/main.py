@@ -1,3 +1,6 @@
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
+
 """
 FastAPI Orchestration Server
 Main entry point for the AI Interview Orchestrator API
@@ -24,7 +27,6 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
-from retrieval.question_engine import get_personalized_questions
 from fastapi import Depends, FastAPI, Header, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from opentelemetry import trace
@@ -65,6 +67,7 @@ from monitoring.dashboard_api import create_dashboard_routes
 from monitoring.metrics_collector import MetricsCollector
 from monitoring.websocket_manager import ws_manager
 from orchestrator import http_cache
+from orchestrator.audit_logger import audit_logger
 from orchestrator.auth import create_access_token
 from orchestrator.candidate_manager import CandidateManager
 from orchestrator.fault_manager import FaultManager
@@ -88,7 +91,9 @@ from orchestrator.session_manager import SessionManager
 from orchestrator.session_tracker import SessionTracker
 from orchestrator.state_sync import StateSynchronizer
 from orchestrator.worker_registry import WorkerRegistry
+from routers.ab_testing import create_ab_testing_routes
 from routers.candidates import create_candidate_routes
+from routers.practice_sessions import router as practice_sessions_router
 from routers.questions import create_question_routes
 from routers.schedule import create_schedule_routes
 from routers.sessions import (  # noqa: F401 (re-exported for tests)
@@ -98,6 +103,7 @@ from routers.sessions import (  # noqa: F401 (re-exported for tests)
 from routers.settings import create_settings_routes
 from routers.templates import create_template_routes
 from routers.workers import create_worker_routes
+from workers.ab_testing_framework import ABTestingFramework
 from workers.bias_auditor import BiasAuditor
 
 # Configure logging after imports so startup messages are structured.
@@ -206,6 +212,25 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+
+@app.exception_handler(HTTPException)
+async def custom_http_exception_handler(request: Request, exc: HTTPException):
+    headers = exc.headers or {}
+    if exc.status_code == 503:
+        if isinstance(exc.detail, dict):
+            body = {
+                "error": exc.detail.get("error", "service_unavailable"),
+                **exc.detail,
+            }
+        else:
+            body = {"error": "service_unavailable", "detail": str(exc.detail)}
+        headers.setdefault("Retry-After", "5")
+        return JSONResponse(status_code=503, content=body, headers=headers)
+    return JSONResponse(
+        status_code=exc.status_code, content={"detail": exc.detail}, headers=headers
+    )
+
 
 logging.getLogger("opentelemetry.exporter.otlp.proto.grpc.exporter").setLevel(
     logging.DEBUG
@@ -382,6 +407,8 @@ metrics_collector = MetricsCollector()
 question_bank = QuestionBank()
 candidate_manager = CandidateManager()
 interview_template_manager = InterviewTemplateManager()
+
+ab_testing_framework = ABTestingFramework(experiment_id="risk-scoring-v1")
 
 # Register dashboard routes
 dashboard_routes = create_dashboard_routes(
@@ -604,7 +631,6 @@ async def readiness_probe():
     """Kubernetes-style readiness probe. Returns 200 only when all dependencies are up."""
     result = await health_monitor.readiness_check()
     if not result["ready"]:
-        from fastapi.responses import JSONResponse as _JSONResponse
 
         return _JSONResponse(status_code=503, content=result)
     return result
@@ -639,7 +665,6 @@ async def get_fairness_audit_report():
 
 
 if ENABLE_PROMETHEUS:
-    from fastapi.responses import Response as _Response
 
     from metrics.prometheus_metrics import get_metrics_text
 
@@ -660,7 +685,7 @@ if ENABLE_PROMETHEUS:
         WORKERS_HEALTHY.set(len(all_workers) - len(unhealthy))
         WORKERS_UNHEALTHY.set(len(unhealthy))
 
-        return _Response(
+        return Response(
             content=get_metrics_text(),
             media_type="text/plain; version=0.0.4; charset=utf-8",
         )
@@ -710,6 +735,19 @@ async def start_interview(
         HTTPException: On creation failure
     """
     try:
+        if hasattr(scheduler, "can_accept_task") and not scheduler.can_accept_task():
+            raise HTTPException(
+                status_code=503,
+                detail="No workers available",
+                headers={"Retry-After": "5"},
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=503, detail="No workers available", headers={"Retry-After": "5"}
+        )
+    try:
         logger.info(
             f"API: Creating interview session for candidate {request.candidate_id}"
         )
@@ -745,7 +783,6 @@ async def start_interview(
         try:
             if not scheduler.can_accept_task():
                 logger.warning(f"System at capacity, rejecting task: {session_id}")
-                from fastapi.responses import JSONResponse
 
                 return JSONResponse(
                     status_code=503,
@@ -754,7 +791,6 @@ async def start_interview(
                 )
         except Exception as e:
             logger.error(f"Error checking capacity: {e!s}")
-            from fastapi.responses import JSONResponse
 
             return JSONResponse(
                 status_code=503,
@@ -1052,6 +1088,7 @@ def _build_risk_report_pdf(report: dict) -> Response:
 
 
 app.include_router(create_candidate_routes(candidate_manager=candidate_manager))
+app.include_router(practice_sessions_router)
 app.include_router(create_schedule_routes())
 app.include_router(create_question_routes(question_bank=question_bank))
 app.include_router(create_settings_routes())
@@ -1066,6 +1103,12 @@ app.include_router(
         load_balancer=load_balancer,
         scheduler=scheduler,
         session_tracker=session_tracker,
+    )
+)
+
+app.include_router(
+    create_ab_testing_routes(
+        ab_testing_framework=ab_testing_framework,
     )
 )
 
@@ -1218,7 +1261,7 @@ async def get_worker_distribution(
     except Exception as e:
         logger.error(f"Error fetching worker distribution: {e!s}")
         raise HTTPException(
-            status_code=500, detail="Error fetching worker distribution"
+            status_code=503, detail="Error fetching worker distribution"
         )
 
 
@@ -1266,8 +1309,11 @@ async def get_cache_stats():
         raise HTTPException(status_code=500, detail="Error fetching cache stats")
 
 
-@app.post("/sync-to-database", dependencies=[Depends(require_token)])
-async def sync_cache_to_database(session_id: str | None = None):
+@app.post("/sync-to-database")
+async def sync_cache_to_database(
+    session_id: str | None = None,
+    current_user=Depends(require_role("admin")),
+):
     """
     Manually sync cache to database
 
@@ -1282,6 +1328,14 @@ async def sync_cache_to_database(session_id: str | None = None):
             session_data = state_sync.get_session_state(session_id)
             if session_data:
                 state_sync.sync_state_to_db(session_id, session_data)
+
+                audit_logger.log_admin_action(
+                    action="sync-to-database",
+                    actor=current_user.get("email")
+                    or current_user.get("user_id")
+                    or "admin",
+                    details={"session_id": session_id},
+                )
                 return {"message": f"Synced session {session_id}", "status": "success"}
             raise HTTPException(status_code=404, detail="Session not found in cache")
         # Sync all active sessions
@@ -1290,6 +1344,12 @@ async def sync_cache_to_database(session_id: str | None = None):
             session_data = state_sync.get_session_state(sid)
             if session_data:
                 state_sync.sync_state_to_db(sid, session_data)
+
+        audit_logger.log_admin_action(
+            action="sync-to-database",
+            actor=current_user.get("email") or current_user.get("user_id") or "admin",
+            details={"synced_count": len(active_sessions)},
+        )
 
         return {
             "message": f"Synced {len(active_sessions)} sessions",
@@ -1303,8 +1363,10 @@ async def sync_cache_to_database(session_id: str | None = None):
         raise HTTPException(status_code=500, detail="Error syncing to database")
 
 
-@app.delete("/clear-cache", dependencies=[Depends(require_role("admin"))])
-async def clear_session_cache():
+@app.delete("/clear-cache")
+async def clear_session_cache(
+    current_user=Depends(require_role("admin")),
+):
     """
     Clear all session cache from Redis
 
@@ -1316,7 +1378,17 @@ async def clear_session_cache():
     try:
         logger.warning("Clearing all session cache from Redis")
         result = state_sync.clear_cache()
-        return {"message": "Cache cleared", "status": "success" if result else "failed"}
+
+        audit_logger.log_admin_action(
+            action="clear-cache",
+            actor=current_user.get("email") or current_user.get("user_id") or "admin",
+            details={"success": bool(result)},
+        )
+
+        return {
+            "message": "Cache cleared",
+            "status": "success" if result else "failed",
+        }
     except Exception as e:
         logger.error(f"Error clearing cache: {e!s}")
         raise HTTPException(status_code=500, detail="Error clearing cache")
@@ -1694,7 +1766,7 @@ async def register_worker(request: WorkerRegistrationRequest):
         }
     except Exception as e:
         logger.error(f"Error registering worker: {e!s}")
-        raise HTTPException(status_code=500, detail=f"Error registering worker: {e!s}")
+        raise HTTPException(status_code=503, detail=f"Error registering worker: {e!s}")
 
 
 @app.post("/worker/heartbeat", dependencies=[Depends(require_token)])
@@ -1803,7 +1875,7 @@ async def list_workers():
     except Exception as e:
         logger.error(f"Error fetching worker list: {e!s}")
         raise HTTPException(
-            status_code=500, detail=f"Error fetching worker list: {e!s}"
+            status_code=503, detail=f"Error fetching worker list: {e!s}"
         )
 
 
@@ -1842,7 +1914,7 @@ async def get_worker_stats():
     except Exception as e:
         logger.error(f"Error generating worker statistics: {e!s}")
         raise HTTPException(
-            status_code=500, detail=f"Error generating worker statistics: {e!s}"
+            status_code=503, detail=f"Error generating worker statistics: {e!s}"
         )
 
 
@@ -1998,7 +2070,7 @@ async def deregister_worker(worker_id: str):
     except Exception as e:
         logger.error(f"Error deregistering worker: {e!s}")
         raise HTTPException(
-            status_code=500, detail=f"Error deregistering worker: {e!s}"
+            status_code=503, detail=f"Error deregistering worker: {e!s}"
         )
 
 
@@ -2141,7 +2213,7 @@ async def get_worker_health():
     except Exception as e:
         logger.error(f"Error fetching worker health: {e!s}")
         raise HTTPException(
-            status_code=500, detail=f"Error fetching worker health: {e!s}"
+            status_code=503, detail=f"Error fetching worker health: {e!s}"
         )
 
 
@@ -2404,19 +2476,13 @@ async def get_dashboard():
         HTML content of the dashboard
     """
     try:
-        import os
+        from anyio import Path
+        from fastapi.responses import HTMLResponse
 
-        dashboard_path = os.path.join(
-            os.path.dirname(__file__), "..", "monitoring", "dashboard.html"
-        )
+        dashboard_path = Path(__file__).parent / ".." / "monitoring" / "dashboard.html"
 
-        if await asyncio.to_thread(os.path.exists, dashboard_path):
-            html_content = await asyncio.to_thread(
-                Path(dashboard_path).read_text, encoding="utf-8"
-            )
-
-            from fastapi.responses import HTMLResponse
-
+        if await dashboard_path.exists():
+            html_content = await dashboard_path.read_text(encoding="utf-8")
             return HTMLResponse(content=html_content)
         raise HTTPException(status_code=404, detail="Dashboard HTML not found")
     except HTTPException:
