@@ -17,8 +17,7 @@ WORKDIR /app
 # ---------------------------------------------------------
 # System dependencies
 # ---------------------------------------------------------
-RUN for i in 1 2 3; do apt-get update && break || sleep 2; done && \
-    apt-get install -y --no-install-recommends \
+RUN apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends \
     curl \
     procps \
     gcc \
