@@ -5,6 +5,7 @@ from workers.scoring_models import (
 
 
 def test_scoring_output_ranges(monkeypatch):
+    """Test that risk scores fall within valid range (0.0 to 1.0)"""
     monkeypatch.setattr(
         "workers.scoring_models.RiskScoringEngine.calculate_video_risk",
         lambda _: 0.2,
@@ -30,9 +31,6 @@ def test_scoring_output_ranges(monkeypatch):
         lambda _: "Review required",
     )
 
-
-def test_scoring_output_ranges():
-    """Test that risk scores fall within valid range (0.0 to 1.0)"""
     # Mock results for testing
     video_result = {"engagement_score": 0.8, "body_language_score": 0.7}
     audio_result = {"clarity_score": 0.9, "confidence_score": 0.85}
