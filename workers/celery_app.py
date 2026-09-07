@@ -4,9 +4,15 @@ and a `session_failed` signal that lets us mark the DB session as
 FAILED only after Celery has exhausted its retries.
 """
 
-from celery import Celery, signals
-from kombu import Queue
-from opentelemetry.instrumentation.celery import CeleryInstrumentor
+from celery import Celery, signals  # type: ignore[reportMissingImports]
+from kombu import Queue  # type: ignore[reportMissingImports]
+try:
+    from opentelemetry.instrumentation.celery import (  # type: ignore[reportMissingImports]
+        CeleryInstrumentor,
+    )
+except ImportError:
+    # Keep Celery usable when the optional OpenTelemetry integration is absent.
+    CeleryInstrumentor = None
 
 from config import REDIS_URL
 from metrics.prometheus_metrics import TASKS_PERMANENTLY_FAILED
@@ -15,7 +21,8 @@ celery_app = Celery("interview_tasks", broker=REDIS_URL, backend=REDIS_URL)
 EVALUATION_MAX_RETRIES = 3
 EVALUATION_RETRY_BACKOFF_BASE = 2
 EVALUATION_RETRY_BACKOFF_MAX = 60
-CeleryInstrumentor().instrument()
+if CeleryInstrumentor is not None:
+    CeleryInstrumentor().instrument()
 
 
 celery_app.conf.update(
@@ -43,6 +50,10 @@ celery_app.conf.update(
         Queue("slow"),
     ),
     beat_schedule={
+        "scan-due-retries": {
+            "task": "workers.tasks.scan_and_dispatch_retries",
+            "schedule": 10.0,
+        },
         "detect-no-shows": {
             "task": "workers.tasks.detect_no_shows",
             "schedule": 60.0,
@@ -88,7 +99,6 @@ def _extract_session_id(args: tuple, kwargs: dict) -> str | None:
 def _on_task_failure(
     sender, task_id, exception, args, kwargs, traceback, einfo, **_extra
 ):
-    print(f"HANDLER EXECUTED: {task_id}")
     """When a session-aware task fails permanently (retries exhausted), mark
     the session as FAILED so the dashboard reflects reality.
 
