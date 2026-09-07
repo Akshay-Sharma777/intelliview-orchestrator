@@ -24,7 +24,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
-
+from retrieval.question_engine import get_personalized_questions
 from fastapi import Depends, FastAPI, Header, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from opentelemetry import trace
