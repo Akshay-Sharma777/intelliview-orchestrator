@@ -21,7 +21,7 @@ from celery.exceptions import Retry
 from sqlalchemy import select
 
 from database.db import SessionLocal
-from database.models import InterviewSession
+from database.models import InterviewSchedule, InterviewSession
 from monitoring.prometheus_metrics import (
     AVG_EVALUATION_LATENCY,
     FAILURE_COUNT,
@@ -382,3 +382,59 @@ def process_interview_session(self, session_id):
         )
 
         raise self.retry(exc=exc, countdown=retry_delay)
+
+
+@celery_app.task(name="workers.tasks.detect_no_shows")
+def detect_no_shows() -> dict:
+    """Automatically mark overdue scheduled interviews as no-shows."""
+
+    db_session = SessionLocal()
+
+    try:
+        now = datetime.now(timezone.utc)
+
+        schedules = (
+            db_session.execute(
+                select(InterviewSchedule).where(
+                    InterviewSchedule.scheduled_at < now,
+                    InterviewSchedule.status == "scheduled",
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        marked_no_shows = []
+
+        for schedule in schedules:
+            session = db_session.execute(
+                select(InterviewSession).where(
+                    InterviewSession.candidate_id == schedule.candidate_id,
+                    InterviewSession.start_time.is_not(None),
+                    InterviewSession.start_time >= schedule.scheduled_at,
+                )
+            ).scalar_one_or_none()
+
+            if session is None:
+                schedule.status = "no-show"
+                marked_no_shows.append(schedule.id)
+
+        db_session.commit()
+
+        logger.info(
+            "No-show detection completed: %d interviews marked as no-show",
+            len(marked_no_shows),
+        )
+
+        return {
+            "marked_no_shows": marked_no_shows,
+            "count": len(marked_no_shows),
+        }
+
+    except Exception:
+        db_session.rollback()
+        logger.exception("No-show detection failed")
+        raise
+
+    finally:
+        db_session.close()
