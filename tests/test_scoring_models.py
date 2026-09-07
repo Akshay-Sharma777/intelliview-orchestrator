@@ -3,6 +3,7 @@ from workers.scoring_models import (
     WeightedRiskModel,
 )
 
+
 def test_scoring_output_ranges(monkeypatch):
     monkeypatch.setattr(
         "workers.scoring_models.RiskScoringEngine.calculate_video_risk",
@@ -28,6 +29,7 @@ def test_scoring_output_ranges(monkeypatch):
         "workers.scoring_models.RiskScoringEngine._generate_recommendation",
         lambda _: "Review required",
     )
+
 
 def test_scoring_output_ranges():
     """Test that risk scores fall within valid range (0.0 to 1.0)"""
