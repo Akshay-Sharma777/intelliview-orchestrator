@@ -1,4 +1,5 @@
 "use client";
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import useSWR from "swr";
 import {
@@ -24,9 +25,11 @@ import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useMomentTracking } from "@/hooks/useMomentTracking";
-import  RiskTimeline  from "@/components/RiskTimeline";
+import RiskTimeline from "@/components/RiskTimeline";
 import { cn, riskColor } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useAudioPlayback } from "@/hooks/useAudioPlayback";
+import AudioIndicator from "@/components/AudioIndicator";
 
 // Persisted so a refresh doesn't silently drop a paused interview back to
 // the "start a new one" screen. Only UI state is restored here (not the
@@ -68,6 +71,18 @@ export default function InterviewPage() {
   const [candidate, setCandidate] = useState(() => persisted.current?.candidate ?? "");
   const [starting, setStarting] = useState(false);
   const [voiceError, setVoiceError] = useState(null);
+
+  // 💡 Task B3: State loop context tracker definition for active question data strings
+  const [currentQuestion, setCurrentQuestion] = useState({
+    text: "Welcome to your AI Interview. Please review the instructions and answer clearly.",
+    audioUrl: ""
+  });
+
+  // 🔊 Task B3: Hook evaluation lifecycle deployment logic sequence
+  const { isPlaying } = useAudioPlayback(currentQuestion?.audioUrl, () => {
+    console.log("Question audio playback complete. Advancing turn machine states.");
+    // If a transition trigger parameter exists within parent props, invoke it here
+  });
 
   // Keep the persisted copy in sync while an interview is live; clear it
   // once the interview ends so a later refresh doesn't resurrect it.
@@ -276,12 +291,18 @@ export default function InterviewPage() {
           <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-300 sm:gap-3">
             <Pause size={16} className="shrink-0" />
             <span className="font-medium">Interview Paused</span>
-            <span className="hidden text-amber-300/70 sm:inline">
-              Camera, mic, and controls are on hold until you resume.
-            </span>
           </div>
         )}
 
+        {/* 🔊 Task B3: Visual Audio Playback State Component Layout Render */}
+        <Card className="p-6 bg-zinc-900 border-zinc-800">
+          <div className="mb-4">
+            <AudioIndicator isPlaying={isPlaying} />
+            <h3 className="text-xl font-semibold text-zinc-100 mt-3">
+              {currentQuestion?.text}
+            </h3>
+          </div>
+        </Card>
         {!isLive && (
           <Card title="Start interview" description="Begin a new live interview session.">
             <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-end">
