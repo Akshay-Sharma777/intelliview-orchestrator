@@ -493,12 +493,14 @@ def run_audio_analysis(session_id: str) -> dict[str, Any]:
     transcription = transcribe_speech(session_id)
     bg_voices = detect_background_voices(session_id)
     suspicious = detect_suspicious_conversation(session_id)
+    vad_analysis = detect_voice_activity(session_id)
 
     results = {
         "session_id": session_id,
         "transcription": transcription,
         "background_voices": bg_voices,
         "suspicious_conversation": suspicious,
+        "vad_analysis": vad_analysis,
         "risk_score": 0.0,
     }
 
@@ -512,6 +514,38 @@ def run_audio_analysis(session_id: str) -> dict[str, Any]:
 
     return results
 
+
+
+def detect_voice_activity(session_id: str) -> dict[str, Any]:
+    """Detect voice activity and speech boundaries using VoiceActivityDetector."""
+    logger.info("Running voice activity detection for session %s", session_id)
+    from workers.vad import VoiceActivityDetector
+
+    detector = VoiceActivityDetector()
+    if os.path.exists(session_id):
+        return detector.process_audio_file(session_id)
+
+    silence = _seeded_unit(session_id, "vad_silence") > 0.85
+    speech_ended = not silence
+    speech_dur = (
+        0.0 if silence else round(2.5 + _seeded_unit(session_id, "vad_dur") * 10, 2)
+    )
+    silence_dur = (
+        round(0.9 + _seeded_unit(session_id, "vad_sil") * 2, 2)
+        if speech_ended
+        else 0.0
+    )
+
+    return {
+        "speech_ended": speech_ended,
+        "total_speech_duration": speech_dur,
+        "silence_duration": silence_dur,
+        "vad_segments": (
+            [{"start": 0.0, "end": speech_dur, "duration": speech_dur}]
+            if speech_ended
+            else []
+        ),
+    }
 
 def transcribe_speech(
     session_id: str,
