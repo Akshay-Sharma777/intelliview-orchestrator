@@ -35,6 +35,7 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { exportAnalyticsCSV, exportAnalyticsPDF } from "@/lib/export";
+import { endpoints } from "@/lib/api";
 
 
 
@@ -527,81 +528,51 @@ export default function AnalyticsPage(){
 // =============================
 
 
-const [candidates,setCandidates]=useState([]);
+const candidatesQuery = useSWR("/candidates");
+const candidates = candidatesQuery.data?.candidates ?? [];
+const [submittingCandidate, setSubmittingCandidate] = useState(false);
 
-
-
-const [candidateForm,setCandidateForm]=useState({
-
- name:"",
- role:"",
- status:"Scheduled",
- score:"",
- risk:""
-
+const [candidateForm, setCandidateForm] = useState({
+  name: "",
+  role: "",
+  status: "Scheduled",
+  score: "",
+  risk: ""
 });
 
+const addCandidate = async () => {
+  if (!candidateForm.name || !candidateForm.role) {
+    toast.error("Candidate name and role required");
+    return;
+  }
 
+  setSubmittingCandidate(true);
+  try {
+    const slugName = candidateForm.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, ".");
+    const email = `${slugName}@example.com`;
+    await endpoints.createCandidate({
+      name: candidateForm.name.trim(),
+      email: email,
+      role: candidateForm.role.trim(),
+      status: candidateForm.status || "unverified",
+    });
 
+    await candidatesQuery.mutate();
 
+    setCandidateForm({
+      name: "",
+      role: "",
+      status: "Scheduled",
+      score: "",
+      risk: ""
+    });
 
-const addCandidate=()=>{
-
-const removeCandidate = (id) => {
-
-  setCandidates((prev) =>
-    prev.filter((candidate) => candidate.id !== id)
-  );
-
-  toast.success(
-    "Candidate removed"
-  );
-
-};
- if(
- !candidateForm.name ||
- !candidateForm.role
- ){
-
- toast.error(
- "Candidate name and role required"
- );
-
- return;
-
- }
-
-
-
- setCandidates([
-
- ...candidates,
-
- {
-  id:Date.now(),
-  ...candidateForm
- }
-
- ]);
-
-
-
- setCandidateForm({
-
- name:"",
- role:"",
- status:"Scheduled",
- score:"",
- risk:""
-
- });
-
-
- toast.success(
- "Candidate added"
- );
-
-
+    toast.success("Candidate added");
+  } catch (err) {
+    toast.error("Failed to add candidate", err instanceof Error ? err.message : String(err));
+  } finally {
+    setSubmittingCandidate(false);
+  }
 };
 
 
@@ -1027,11 +998,13 @@ High
 
 onClick={addCandidate}
 
-className="rounded bg-accent px-4 py-2 text-white"
+disabled={submittingCandidate}
+
+className="rounded bg-accent px-4 py-2 text-white disabled:opacity-50"
 
 >
 
-Add Candidate
+{submittingCandidate ? "Adding..." : "Add Candidate"}
 
 </button>
 
@@ -1109,7 +1082,7 @@ candidates.map((c)=>(
 
 
 <tr
-key={c.id}
+key={c.candidate_id || c.id}
 className="border-t border-border"
 >
 
@@ -1120,7 +1093,7 @@ className="border-t border-border"
 
 
 <td>
-{c.role}
+{c.role || c.position || "—"}
 </td>
 
 
@@ -1132,15 +1105,11 @@ className="border-t border-border"
 <td>
 
 {
-c.score
+c.score != null
 ?
-
-c.score+"%"
-
+c.score + "%"
 :
-
-"-"
-
+"—"
 }
 
 </td>
@@ -1149,8 +1118,7 @@ c.score+"%"
 <td>
 
 {
-c.risk || "-"
-
+c.avg_risk_score != null ? c.avg_risk_score.toFixed(2) : (c.risk || "—")
 }
 
 </td>

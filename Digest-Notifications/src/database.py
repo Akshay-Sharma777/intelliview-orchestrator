@@ -20,6 +20,7 @@ def init_db():
     os.makedirs(DATA_DIR, exist_ok=True)
     conn = get_db_conn()
     cursor = conn.cursor()
+
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS interviews (
@@ -35,6 +36,7 @@ def init_db():
         )
         """
     )
+
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS sent_logs (
@@ -48,6 +50,7 @@ def init_db():
         )
         """
     )
+
     conn.commit()
 
     # Automatic migration helper if SQLite database table is empty and JSON files exist
