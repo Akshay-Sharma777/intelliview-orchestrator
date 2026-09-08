@@ -8,13 +8,13 @@ Responsibilities:
   triggers speech_ended on sustained silence after speech)
 """
 
-from dataclasses import dataclass
 import logging
 import math
 import os
 import struct
-from typing import Any, TypedDict
 import wave
+from dataclasses import dataclass
+from typing import Any, TypedDict
 
 try:
     import numpy as np
