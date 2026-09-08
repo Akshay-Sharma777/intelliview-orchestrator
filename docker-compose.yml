@@ -64,12 +64,15 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}"
       API_TOKEN: "${API_TOKEN:-dev-token-change-me}"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1 
       RATE_LIMIT_PER_MINUTE: "${RATE_LIMIT_PER_MINUTE:-1000}"
       CORS_ALLOW_ORIGINS: "${CORS_ALLOW_ORIGINS:-*}"
       ENABLE_PROMETHEUS: "${ENABLE_PROMETHEUS:-true}"
       AUDIT_LOG_FILE: "${AUDIT_LOG_FILE:-}"
     volumes:
       - sqlite_data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       redis:
         condition: service_healthy
@@ -110,6 +113,8 @@ services:
       POSTGRES_DB: ai_interview_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
       API_URL: "http://fastapi:8000"
       API_TOKEN: "${API_TOKEN:-dev-token-change-me}"
       WORKER_CONCURRENCY: "4"

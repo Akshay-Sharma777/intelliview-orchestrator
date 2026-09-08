@@ -1,4 +1,5 @@
 "use client";
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import useSWR from "swr";
 import {
@@ -24,9 +25,11 @@ import { useAppStore } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useMomentTracking } from "@/hooks/useMomentTracking";
-import  RiskTimeline  from "@/components/RiskTimeline";
+import RiskTimeline from "@/components/RiskTimeline";
 import { cn, riskColor } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useAudioPlayback } from "@/hooks/useAudioPlayback";
+import AudioIndicator from "@/components/AudioIndicator";
 
 // Persisted so a refresh doesn't silently drop a paused interview back to
 // the "start a new one" screen. Only UI state is restored here (not the
@@ -67,6 +70,19 @@ export default function InterviewPage() {
   const [audioLevels, setAudioLevels] = useState(new Array(32).fill(0));
   const [candidate, setCandidate] = useState(() => persisted.current?.candidate ?? "");
   const [starting, setStarting] = useState(false);
+  const [voiceError, setVoiceError] = useState(null);
+
+  // 💡 Task B3: State loop context tracker definition for active question data strings
+  const [currentQuestion, setCurrentQuestion] = useState({
+    text: "Welcome to your AI Interview. Please review the instructions and answer clearly.",
+    audioUrl: ""
+  });
+
+  // 🔊 Task B3: Hook evaluation lifecycle deployment logic sequence
+  const { isPlaying } = useAudioPlayback(currentQuestion?.audioUrl, () => {
+    console.log("Question audio playback complete. Advancing turn machine states.");
+    // If a transition trigger parameter exists within parent props, invoke it here
+  });
 
   // Keep the persisted copy in sync while an interview is live; clear it
   // once the interview ends so a later refresh doesn't resurrect it.
@@ -90,7 +106,12 @@ export default function InterviewPage() {
     trackEvent,
   } = useMomentTracking(activeSession);
 
-  const { connected } = useWebSocket({
+  const {
+    connected,
+    reconnecting,
+    retryAttempt,
+    error: voiceStreamError,
+  } = useWebSocket({
     path: "/monitoring/ws/metrics",
     enabled: !!token && isLive,
     onMessage: (data) => {
@@ -100,35 +121,67 @@ export default function InterviewPage() {
   });
 
   const startCamera = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: "user" },
-        audio: true,
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+    const maxAttempts = 3;
+    let lastError = null;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480, facingMode: "user" },
+          audio: true,
+        });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+        setVideoEnabled(true);
+        setVoiceError(null);
+
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioCtxRef.current.createMediaStreamSource(stream);
+        const analyzer = audioCtxRef.current.createAnalyser();
+        analyzer.fftSize = 64;
+        source.connect(analyzer);
+
+        const dataArray = new Uint8Array(analyzer.frequencyBinCount);
+        const draw = () => {
+          analyzer.getByteFrequencyData(dataArray);
+          setAudioLevels(Array.from(dataArray));
+          animFrameRef.current = requestAnimationFrame(draw);
+        };
+        draw();
+        return true;
+      } catch (err) {
+        lastError = err;
+
+        const recoverable =
+          err?.name === "NotReadableError" || err?.name === "AbortError";
+
+        if (!recoverable || attempt === maxAttempts - 1) {
+          break;
+        }
+
+        const delay = 500 * 2 ** attempt;
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
-      setVideoEnabled(true);
-
-      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      const source = audioCtxRef.current.createMediaStreamSource(stream);
-      const analyzer = audioCtxRef.current.createAnalyser();
-      analyzer.fftSize = 64;
-      source.connect(analyzer);
-
-      const dataArray = new Uint8Array(analyzer.frequencyBinCount);
-      const draw = () => {
-        analyzer.getByteFrequencyData(dataArray);
-        setAudioLevels(Array.from(dataArray));
-        animFrameRef.current = requestAnimationFrame(draw);
-      };
-      draw();
-    } catch (err) {
-      toast.error("Camera access denied", err instanceof Error ? err.message : String(err));
     }
-  }, []);
 
+    const message =
+      lastError?.name === "NotAllowedError" ||
+      lastError?.name === "PermissionDeniedError"
+        ? "Microphone and camera permission is required. Please allow access and try again."
+        : lastError?.name === "NotFoundError"
+          ? "No microphone or camera was found. Please connect a device and try again."
+          : lastError?.name === "NotReadableError"
+            ? "The microphone or camera is currently unavailable. Please close other apps using it and try again."
+            : lastError?.name === "AbortError"
+              ? "The microphone or camera could not be started. Please try again."
+              : "Unable to access the microphone or camera. Please try again.";
+
+    setVoiceError(message);
+    toast.error("Voice access failed", message);
+    return false;
+  }, []);
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
@@ -170,7 +223,12 @@ export default function InterviewPage() {
       const r = await endpoints.startInterview({ candidate_id: candidate.trim(), priority: "high" });
       setActiveSession(r.session_id);
       setIsLive(true);
-      await startCamera();
+      const cameraStarted = await startCamera();
+      if (!cameraStarted) {
+        setIsLive(false);
+        setActiveSession(null);
+        return;
+      }
       startTracking();
       trackEvent("session_start", { candidate_id: candidate.trim() });
       toast.success("Interview started", `Session ${r.session_id}`);
@@ -233,12 +291,18 @@ export default function InterviewPage() {
           <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-300 sm:gap-3">
             <Pause size={16} className="shrink-0" />
             <span className="font-medium">Interview Paused</span>
-            <span className="hidden text-amber-300/70 sm:inline">
-              Camera, mic, and controls are on hold until you resume.
-            </span>
           </div>
         )}
 
+        {/* 🔊 Task B3: Visual Audio Playback State Component Layout Render */}
+        <Card className="p-6 bg-zinc-900 border-zinc-800">
+          <div className="mb-4">
+            <AudioIndicator isPlaying={isPlaying} />
+            <h3 className="text-xl font-semibold text-zinc-100 mt-3">
+              {currentQuestion?.text}
+            </h3>
+          </div>
+        </Card>
         {!isLive && (
           <Card title="Start interview" description="Begin a new live interview session.">
             <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-end">
@@ -251,6 +315,15 @@ export default function InterviewPage() {
                   className="mt-1 w-full rounded-md border border-border bg-bg-card px-3 py-2 text-sm text-zinc-100 placeholder:text-muted focus:border-accent focus:outline-none"
                 />
               </div>
+              {voiceError && (
+                <div
+                  role="alert"
+                  className="flex w-full items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400"
+                >
+                  <AlertTriangle size={16} />
+                  <span>{voiceError}</span>
+                </div>
+              )}
               <button
                 onClick={handleStart}
                 disabled={!token || starting || !candidate.trim()}
@@ -308,6 +381,18 @@ export default function InterviewPage() {
               )}
             </div>
             {isLive && (
+              <>
+                {voiceStreamError && (
+                  <div
+                    role="alert"
+                    className="flex w-full items-center gap-2 border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400"
+                  >
+                    <AlertTriangle size={16} />
+                    <span>
+                      {reconnecting ? `Voice connection lost. Reconnecting${retryAttempt ? ` (attempt ${retryAttempt})` : "..."}` : voiceStreamError}
+                    </span>
+                  </div>
+                )}
                 <div className="flex flex-wrap items-center gap-2 border-t border-border px-3 py-3 sm:px-4">
                   <button
                     onClick={toggleAudio}
@@ -332,12 +417,12 @@ export default function InterviewPage() {
                     className="ml-auto rounded-md bg-rose-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-600"
                   >
                     <PhoneOff size={14} className="inline mr-1" />
-                    End
                   </button>
                 </div>
-              )}
-            </Card>
+              </>
+            )}
 
+          </Card>
           <div className="space-y-4">
             <Card title="Risk Score" description="Real-time risk assessment">
               <div className="flex flex-col items-center py-4">
@@ -403,7 +488,11 @@ export default function InterviewPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted">WS</span>
-                  {connected ? (
+                  {reconnecting ? (
+                    <Badge variant="warning">
+                      Reconnecting{retryAttempt ? `� (attempt ${retryAttempt})` : "�"}
+                    </Badge>
+                  ) : connected ? (
                     <Badge variant="success">Connected</Badge>
                   ) : (
                     <Badge variant="muted">Disconnected</Badge>
@@ -442,4 +531,3 @@ export default function InterviewPage() {
     </ErrorBoundary>
   );
 }
-
