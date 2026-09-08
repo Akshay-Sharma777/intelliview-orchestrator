@@ -48,9 +48,8 @@ def postgres_container():
     if os.getenv("GITHUB_ACTIONS") == "true":
         postgres_host = os.getnev("POSTGRES_HOST", "localhost")
         postgres_port = os.getnev("POSTGRES_PORT", "5432")
-            
-        database_url = (
 
+        database_url = (
             "postgresql+psycopg2://postgres:postgres"
             f"@{postgres_host}:{postgres_port}/ai_interview_test"
         )

@@ -6,6 +6,7 @@ FAILED only after Celery has exhausted its retries.
 
 from celery import Celery, signals  # type: ignore[reportMissingImports]
 from kombu import Queue  # type: ignore[reportMissingImports]
+
 try:
     from opentelemetry.instrumentation.celery import (  # type: ignore[reportMissingImports]
         CeleryInstrumentor,
