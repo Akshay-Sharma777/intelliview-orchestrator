@@ -44,6 +44,12 @@ mediapipe
 reportlab==4.2.5
 faiss-cpu
 google-generativeai
+
+# === Document Parsing / Vector Retrieval ===
+python-docx
+pypdf
+chromadb
+
 # === Load Testing ===
 locust
 pyttsx3>=2.90
