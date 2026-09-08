@@ -17,9 +17,7 @@ WORKDIR /app
 # ---------------------------------------------------------
 # System dependencies
 # ---------------------------------------------------------
-RUN echo "deb http://archive.debian.org/debian bullseye main" > /etc/apt/sources.list && \
-    echo "deb http://archive.debian.org/debian-security bullseye-security main" >> /etc/apt/sources.list && \
-    apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     procps \
     gcc \
