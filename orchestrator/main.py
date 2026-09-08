@@ -90,8 +90,7 @@ from orchestrator.state_sync import StateSynchronizer
 from orchestrator.worker_registry import WorkerRegistry
 from routers.ab_testing import create_ab_testing_routes
 from routers.candidates import create_candidate_routes
-from routers.integrity import _calculate_session_integrity_score
-from routers.integrity import get_tab_switch_count
+from routers.integrity import _calculate_session_integrity_score, get_tab_switch_count
 from routers.integrity import router as integrity_router
 from routers.practice_sessions import router as practice_sessions_router
 from routers.questions import create_question_routes
@@ -105,6 +104,7 @@ from routers.session_control import (
 )
 from routers.sessions import (  # noqa: F401 (re-exported for tests)
     StartInterviewRequest,
+    _compute_live_integrity_score,
     create_session_routes,
 )
 from routers.settings import create_settings_routes
@@ -879,8 +879,6 @@ async def start_interview(
         logger.error(f"Error starting interview session: {e!s}")
         raise HTTPException(status_code=500, detail=f"Error starting interview: {e!s}")
 
-
-def _compute_live_integrity_score(session_id: str, session_data: dict) -> int:
     """Fuse anti-cheat signals into a single 0-100 integrity score.
 
     Reads whatever signals are currently available for the session so the
