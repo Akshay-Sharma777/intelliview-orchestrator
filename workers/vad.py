@@ -83,7 +83,7 @@ class VoiceActivityDetector:
                 return 0.0
             unpacked = struct.unpack(f"<{count}h", frame_samples[: count * 2])
             float_samples = [s / 32768.0 for s in unpacked]
-        elif isinstance(frame_samples, (list, tuple)):
+        elif isinstance(frame_samples, list | tuple):
             float_samples = [
                 s / 32768.0 if isinstance(s, int) else float(s) for s in frame_samples
             ]

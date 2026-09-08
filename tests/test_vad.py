@@ -17,7 +17,6 @@ except ImportError:
     np = None
     HAS_NUMPY = False
 
-import pytest
 
 from workers.audio_pipeline import detect_voice_activity, run_audio_analysis
 from workers.vad import VADConfig, VoiceActivityDetector
@@ -30,9 +29,8 @@ def create_synthetic_wav(
 
     Pattern is a list of (type, duration_seconds) where type is 'speech' or 'silence'.
     """
-    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-    tmp_path = tmp.name
-    tmp.close()
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+        tmp_path = tmp.name
 
     total_samples = []
     for ptype, duration in pattern:
