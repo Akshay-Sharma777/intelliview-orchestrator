@@ -46,4 +46,5 @@ faiss-cpu
 google-generativeai
 # === Load Testing ===
 locust
-pyttsx3==2.99
+pyttsx3>=2.90
+
