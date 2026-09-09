@@ -1,9 +1,12 @@
 name: CD
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
     branches:
       - main
+    types:
+      - completed
 
 permissions:
   contents: read
@@ -11,6 +14,7 @@ permissions:
 jobs:
   deploy:
     name: Deploy using github-hosted runner
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     env:
       DOCKER_USERNAME_SECRET: ${{ secrets.DOCKER_USERNAME }}
@@ -19,6 +23,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Login to Docker Hub
         if: env.DOCKER_USERNAME_SECRET != '' && env.DOCKER_TOKEN_SECRET != ''
@@ -38,7 +44,22 @@ jobs:
       - name: Start application
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        run: docker compose up -d
+        run: docker compose up -d --build
 
       - name: Check containers
         run: docker compose ps
+
+      - name: Post-deploy health verification
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8000/health; then
+              echo "Staging environment is healthy!"
+              exit 0
+            fi
+            echo "Waiting for API to become healthy... ($i/30)"
+            sleep 2
+          done
+
+          echo "Staging health check failed" >&2
+          docker compose logs
+          exit 1
