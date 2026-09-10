@@ -853,6 +853,8 @@ export default function InterviewPage() {
                   </Badge>
                 )}
               </div>
+          </div>
+        </Card>
 
             <Card title="Session Info">
               <div className="space-y-2 text-sm">
@@ -894,7 +896,7 @@ export default function InterviewPage() {
                 </div>
               </div>
 
-              </div>
+            
 
               {/* ==================================================
                   ISSUE #18 - Integrity status
