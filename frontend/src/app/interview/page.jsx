@@ -856,48 +856,9 @@ export default function InterviewPage() {
           </div>
         </Card>
 
-            <Card title="Session Info">
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="shrink-0 text-muted">Session</span>
-                  <span className="truncate font-mono text-xs text-zinc-300">{activeSession || "—"}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="shrink-0 text-muted">Candidate</span>
-                  <span className="truncate text-zinc-300">{candidate || "—"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted">Status</span>
-                  {isLive ? (
-                    <Badge variant="success">Live</Badge>
-                  ) : (
-                    <Badge variant="muted">Idle</Badge>
-                  )}
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted">WS</span>
-                  {reconnecting ? (
-                    <Badge variant="warning">
-                      Reconnecting{retryAttempt ? `� (attempt ${retryAttempt})` : "�"}
-                    </Badge>
-                  ) : connected ? (
-                    <Badge variant="success">Connected</Badge>
-                  ) : (
-                    <Badge variant="muted">Disconnected</Badge>
-                  )}
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted">Tracking</span>
-                  {isTracking ? (
-                    <Badge variant="success">{moments.length} moments</Badge>
-                  ) : (
-                    <Badge variant="muted">Inactive</Badge>
-                  )}
-                </div>
-              </div>
+
 
             
-
               {/* ==================================================
                   ISSUE #18 - Integrity status
               ================================================== */}
