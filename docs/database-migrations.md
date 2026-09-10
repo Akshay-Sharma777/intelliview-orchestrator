@@ -150,3 +150,10 @@ After the final upgrade, the database was at:
 a9c4c63a79be (head)
 
 So the existing migration chain can be upgraded, rolled back to an explicit revision, and upgraded again.
+
+## Production PostgreSQL & Managed Database (Neon) SSL Configuration
+
+- Managed PostgreSQL (Neon): Managed cloud PostgreSQL requires SSL/TLS connections. Production should set `DATABASE_SSLMODE=require`.
+- Required PostgreSQL environment variables: `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `DATABASE_SSLMODE=require` (or `DATABASE_URL` containing `sslmode=require`).
+- Fail-Closed Policy: PostgreSQL connection or SSL configuration failures will propagate errors and fail closed. The application does not silently fall back to local SQLite when PostgreSQL is configured.
+- Secret Hygiene: Never commit database credentials or connection strings.
