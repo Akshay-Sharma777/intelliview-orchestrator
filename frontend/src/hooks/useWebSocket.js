@@ -6,6 +6,9 @@ export function useWebSocket({ path, onMessage, enabled = true }) {
   const [connected, setConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState(null);
   const [reconnectCount, setReconnectCount] = useState(0);
+  const [reconnecting, setReconnecting] = useState(false);
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const [error, setError] = useState(null);
   const wsRef = useRef(null);
   const retryRef = useRef(0);
   const onMessageRef = useRef(onMessage);
@@ -42,10 +45,12 @@ export function useWebSocket({ path, onMessage, enabled = true }) {
     function scheduleReconnect() {
       if (cancelled || reconnectScheduled) return;
       reconnectScheduled = true;
+      setReconnecting(true);
       const delay = Math.min(15_000, 500 * 2 ** retryRef.current);
       timer = setTimeout(() => {
         reconnectScheduled = false;
         retryRef.current = Math.min(retryRef.current + 1, 8);
+        setRetryAttempt(retryRef.current);
         connect();
       }, delay);
     }
@@ -62,6 +67,11 @@ export function useWebSocket({ path, onMessage, enabled = true }) {
             ws.close();
             return;
           }
+          setConnected(true);
+          setReconnecting(false);
+          setRetryAttempt(0);
+          setError(null);
+          retryRef.current = 0;
 
           const token = api.token;
 
@@ -94,7 +104,9 @@ export function useWebSocket({ path, onMessage, enabled = true }) {
           }
         };
 
-        ws.onerror = () => {};
+        ws.onerror = () => {
+          setError("Voice stream connection failed.");
+        };
 
         ws.onclose = () => {
           setConnected(false);
@@ -126,7 +138,16 @@ export function useWebSocket({ path, onMessage, enabled = true }) {
     };
   }, [path, enabled, reconnectCount]);
 
-  return { connected, lastMessage, send, disconnect, reconnect };
+  return {
+    connected,
+    lastMessage,
+    send,
+    disconnect,
+    reconnect,
+    reconnecting,
+    retryAttempt,
+    error,
+  };
 }
 
 export function useRealtimeSubscription(

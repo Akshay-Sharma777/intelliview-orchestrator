@@ -24,6 +24,8 @@ import { useMomentTracking } from "@/hooks/useMomentTracking";
 import RiskTimeline from "@/components/RiskTimeline";
 import { cn, riskColor } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useAudioPlayback } from "@/hooks/useAudioPlayback";
+import AudioIndicator from "@/components/AudioIndicator";
 
 // Persisted so a refresh doesn't silently drop a paused interview back to
 // the "start a new one" screen.
@@ -93,6 +95,19 @@ export default function InterviewPage() {
   );
 
   const [starting, setStarting] = useState(false);
+  const [voiceError, setVoiceError] = useState(null);
+
+  // 💡 Task B3: State loop context tracker definition for active question data strings
+  const [currentQuestion, setCurrentQuestion] = useState({
+    text: "Welcome to your AI Interview. Please review the instructions and answer clearly.",
+    audioUrl: ""
+  });
+
+  // 🔊 Task B3: Hook evaluation lifecycle deployment logic sequence
+  const { isPlaying } = useAudioPlayback(currentQuestion?.audioUrl, () => {
+    console.log("Question audio playback complete. Advancing turn machine states.");
+    // If a transition trigger parameter exists within parent props, invoke it here
+  });
 
   // Keep persisted copy in sync while interview is live.
   useEffect(() => {
@@ -130,10 +145,12 @@ export default function InterviewPage() {
     trackEvent,
   } = useMomentTracking(activeSession);
 
-  // ============================================================
-  // Existing WebSocket - Risk Score
-  // ============================================================
-  const { connected } = useWebSocket({
+  const {
+    connected,
+    reconnecting,
+    retryAttempt,
+    error: voiceStreamError,
+  } = useWebSocket({
     path: "/monitoring/ws/metrics",
 
     enabled: !!token && isLive,
@@ -185,67 +202,67 @@ export default function InterviewPage() {
   }, [sessionStatus]);
 
   const startCamera = useCallback(async () => {
-    try {
-      const stream =
-        await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: 640,
-            height: 480,
-            facingMode: "user",
-          },
+    const maxAttempts = 3;
+    let lastError = null;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480, facingMode: "user" },
           audio: true,
         });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+        setVideoEnabled(true);
+        setVoiceError(null);
 
-      streamRef.current = stream;
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioCtxRef.current.createMediaStreamSource(stream);
+        const analyzer = audioCtxRef.current.createAnalyser();
+        analyzer.fftSize = 64;
+        source.connect(analyzer);
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+        const dataArray = new Uint8Array(analyzer.frequencyBinCount);
+        const draw = () => {
+          analyzer.getByteFrequencyData(dataArray);
+          setAudioLevels(Array.from(dataArray));
+          animFrameRef.current = requestAnimationFrame(draw);
+        };
+        draw();
+        return true;
+      } catch (err) {
+        lastError = err;
+
+        const recoverable =
+          err?.name === "NotReadableError" || err?.name === "AbortError";
+
+        if (!recoverable || attempt === maxAttempts - 1) {
+          break;
+        }
+
+        const delay = 500 * 2 ** attempt;
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
-
-      setVideoEnabled(true);
-
-      audioCtxRef.current =
-        new (window.AudioContext ||
-          window.webkitAudioContext)();
-
-      const source =
-        audioCtxRef.current.createMediaStreamSource(
-          stream
-        );
-
-      const analyzer =
-        audioCtxRef.current.createAnalyser();
-
-      analyzer.fftSize = 64;
-
-      source.connect(analyzer);
-
-      const dataArray = new Uint8Array(
-        analyzer.frequencyBinCount
-      );
-
-      const draw = () => {
-        analyzer.getByteFrequencyData(dataArray);
-
-        setAudioLevels(
-          Array.from(dataArray)
-        );
-
-        animFrameRef.current =
-          requestAnimationFrame(draw);
-      };
-
-      draw();
-    } catch (err) {
-      toast.error(
-        "Camera access denied",
-        err instanceof Error
-          ? err.message
-          : String(err)
-      );
     }
-  }, []);
 
+    const message =
+      lastError?.name === "NotAllowedError" ||
+      lastError?.name === "PermissionDeniedError"
+        ? "Microphone and camera permission is required. Please allow access and try again."
+        : lastError?.name === "NotFoundError"
+          ? "No microphone or camera was found. Please connect a device and try again."
+          : lastError?.name === "NotReadableError"
+            ? "The microphone or camera is currently unavailable. Please close other apps using it and try again."
+            : lastError?.name === "AbortError"
+              ? "The microphone or camera could not be started. Please try again."
+              : "Unable to access the microphone or camera. Please try again.";
+
+    setVoiceError(message);
+    toast.error("Voice access failed", message);
+    return false;
+  }, []);
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current
@@ -317,8 +334,12 @@ export default function InterviewPage() {
       // Reset Issue #18 score for new session.
       setIntegrityScore(null);
 
-      await startCamera();
-
+      const cameraStarted = await startCamera();
+      if (!cameraStarted) {
+        setIsLive(false);
+        setActiveSession(null);
+        return;
+      }
       startTracking();
 
       trackEvent("session_start", {
@@ -441,6 +462,7 @@ export default function InterviewPage() {
 
         {isLive && isPaused && (
           <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-300 sm:gap-3">
+
             <Pause
               size={16}
               className="shrink-0"
@@ -460,6 +482,18 @@ export default function InterviewPage() {
         {/* ======================================================
             START INTERVIEW
         ====================================================== */}
+
+
+
+        {/* 🔊 Task B3: Visual Audio Playback State Component Layout Render */}
+        <Card className="p-6 bg-zinc-900 border-zinc-800">
+          <div className="mb-4">
+            <AudioIndicator isPlaying={isPlaying} />
+            <h3 className="text-xl font-semibold text-zinc-100 mt-3">
+              {currentQuestion?.text}
+            </h3>
+          </div>
+        </Card>
 
         {!isLive && (
           <Card
@@ -482,7 +516,15 @@ export default function InterviewPage() {
                   className="mt-1 w-full rounded-md border border-border bg-bg-card px-3 py-2 text-sm text-zinc-100 placeholder:text-muted focus:border-accent focus:outline-none"
                 />
               </div>
-
+              {voiceError && (
+                <div
+                  role="alert"
+                  className="flex w-full items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400"
+                >
+                  <AlertTriangle size={16} />
+                  <span>{voiceError}</span>
+                </div>
+              )}
               <button
                 onClick={handleStart}
                 disabled={
@@ -812,36 +854,46 @@ export default function InterviewPage() {
                 )}
               </div>
 
-              <div className="flex justify-between">
-                <span className="text-muted">
-                  WS
-                </span>
-
-                {connected ? (
-                  <Badge variant="success">
-                    Connected
-                  </Badge>
-                ) : (
-                  <Badge variant="muted">
-                    Disconnected
-                  </Badge>
-                )}
+            <Card title="Session Info">
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="shrink-0 text-muted">Session</span>
+                  <span className="truncate font-mono text-xs text-zinc-300">{activeSession || "—"}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="shrink-0 text-muted">Candidate</span>
+                  <span className="truncate text-zinc-300">{candidate || "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted">Status</span>
+                  {isLive ? (
+                    <Badge variant="success">Live</Badge>
+                  ) : (
+                    <Badge variant="muted">Idle</Badge>
+                  )}
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted">WS</span>
+                  {reconnecting ? (
+                    <Badge variant="warning">
+                      Reconnecting{retryAttempt ? `� (attempt ${retryAttempt})` : "�"}
+                    </Badge>
+                  ) : connected ? (
+                    <Badge variant="success">Connected</Badge>
+                  ) : (
+                    <Badge variant="muted">Disconnected</Badge>
+                  )}
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted">Tracking</span>
+                  {isTracking ? (
+                    <Badge variant="success">{moments.length} moments</Badge>
+                  ) : (
+                    <Badge variant="muted">Inactive</Badge>
+                  )}
+                </div>
               </div>
 
-              <div className="flex justify-between">
-                <span className="text-muted">
-                  Tracking
-                </span>
-
-                {isTracking ? (
-                  <Badge variant="success">
-                    {moments.length} moments
-                  </Badge>
-                ) : (
-                  <Badge variant="muted">
-                    Inactive
-                  </Badge>
-                )}
               </div>
 
               {/* ==================================================
