@@ -879,8 +879,7 @@ export default function InterviewPage() {
                 )}
               </div>
 
-            </div>
-          </Card>
+         
 
           {/* ====================================================
               RISK TIMELINE
