@@ -50,8 +50,9 @@ def postgres_container():
         postgres_port = os.getenv("POSTGRES_PORT", "5432")
 
         database_url = (
-            "postgresql+psycopg2://postgres:postgres"
-            f"@{postgres_host}:{postgres_port}/ai_interview_test"
+            f"postgresql+psycopg2://postgres:postgres@"
+            f"{postgres_host}:{postgres_port}/"
+            f"{os.getenv('POSTGRES_DB', 'ai_interview_db')}"
         )
 
         postgres = SimpleNamespace(get_connection_url=lambda: database_url)
@@ -160,11 +161,17 @@ def mock_db_session(mocker):
 @pytest.fixture
 def mock_state_sync(mocker):
     """Fake Redis-backed StateSynchronizer for session state caching."""
-    mock_cls = mocker.patch("orchestrator.state_sync.StateSynchronizer", autospec=True)
+    mock_cls = mocker.patch(
+        "orchestrator.state_sync.StateSynchronizer",
+        autospec=True,
+    )
     return mock_cls.return_value
 
 
 @pytest.fixture
 def mock_circuit_closed(mocker):
     """Defaults the Redis circuit breaker to closed (Redis 'available')."""
-    return mocker.patch("orchestrator.redis_client.is_circuit_open", return_value=False)
+    return mocker.patch(
+        "orchestrator.redis_client.is_circuit_open",
+        return_value=False,
+    )
