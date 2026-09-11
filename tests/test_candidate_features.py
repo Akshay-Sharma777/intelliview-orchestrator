@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
+from database.db import Base, SessionLocal, engine
 from database.models import Candidate, InterviewSession
 from orchestrator.candidate_manager import candidate_manager
 from orchestrator.main import app
@@ -18,8 +19,9 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def clean_db():
-    from database.db import SessionLocal
     from database.models.interview_schedule import InterviewSchedule
+
+    Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
     try:
