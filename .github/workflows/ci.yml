@@ -94,6 +94,7 @@ jobs:
             --cov=. \
             --cov-report=term-missing \
             --cov-report=html \
+            --cov-report=xml \
             --cov-fail-under=50 \
             -v
 
@@ -103,6 +104,13 @@ jobs:
         with:
           name: html-coverage-report
           path: htmlcov/
+
+      - name: Upload XML coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: xml-coverage-report
+          path: coverage.xml
 
   # --------------------------------------------------
   # End-to-end tests
