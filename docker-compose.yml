@@ -24,6 +24,20 @@ services:
           memory: 512M
           cpus: "1.0"
 
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.66.0
+    container_name: ai-interview-redis-exporter
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    ports:
+      - "9121:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - ai-interview-network
+    restart: unless-stopped
+
   postgres:
     image: postgres:15-alpine
     platform: linux/amd64
