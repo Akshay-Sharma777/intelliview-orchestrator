@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     worker_id: str = "worker-1"
 
     # --- API / Security ---
-    api_token: str = "dev-token-change-me"
+    api_token: str = ""
     jwt_secret_key: str = "change-this-to-a-long-random-secret-key"
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 30
@@ -86,7 +86,7 @@ class Settings(BaseSettings):
 
     # --- Screen Lock ---
     screen_lock_timeout: int = 300
-    screen_lock_pin: str = "1234"
+    screen_lock_pin: str = ""
 
     # --- Real-time Tracking ---
     realtime_enabled: bool = True

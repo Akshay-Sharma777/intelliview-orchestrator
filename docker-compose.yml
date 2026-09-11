@@ -63,7 +63,7 @@ services:
       POSTGRES_DB: ai_interview_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}"
-      API_TOKEN: "${API_TOKEN:-dev-token-change-me}"
+      API_TOKEN: "${API_TOKEN:?API_TOKEN must be set}"
       RATE_LIMIT_PER_MINUTE: "${RATE_LIMIT_PER_MINUTE:-1000}"
       CORS_ALLOW_ORIGINS: "${CORS_ALLOW_ORIGINS:-*}"
       ENABLE_PROMETHEUS: "${ENABLE_PROMETHEUS:-true}"
@@ -111,7 +111,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}"
       API_URL: "http://fastapi:8000"
-      API_TOKEN: "${API_TOKEN:-dev-token-change-me}"
+      API_TOKEN: "${API_TOKEN:?API_TOKEN must be set}"
       WORKER_CONCURRENCY: "4"
       WORKER_ID: "${WORKER_ID:-worker-1}"
       CV_SERVICE_URL: http://cv-service:8001
@@ -213,7 +213,7 @@ services:
       - "5555:5555"
     environment:
       REDIS_URL: redis://redis:6379/0
-      API_TOKEN: "${API_TOKEN:-dev-token-change-me}"
+      API_TOKEN: "${API_TOKEN:?API_TOKEN must be set}"
       PYTHONPATH: /app
     depends_on:
       redis:
@@ -373,7 +373,7 @@ services:
     ports:
       - "8081:8080"
     environment:
-      API_TOKEN: "${API_TOKEN:-dev-token-change-me}"
+      API_TOKEN: "${API_TOKEN:?API_TOKEN must be set}"
       DIGEST_BATCH_SIZE: "5"
     volumes:
       - .:/app

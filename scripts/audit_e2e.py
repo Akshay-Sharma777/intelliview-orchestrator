@@ -10,6 +10,7 @@ Run while the stack is up:
 from __future__ import annotations
 
 import json
+import os
 import time
 import urllib.error
 import urllib.request
@@ -17,7 +18,7 @@ from typing import Any
 
 API = "http://localhost:8000"
 WEB = "http://localhost:3000"
-TOKEN = "dev-token-change-me"
+TOKEN = os.getenv("API_TOKEN", "")
 
 PASS = "\033[32mPASS\033[0m"
 FAIL = "\033[31mFAIL\033[0m"
