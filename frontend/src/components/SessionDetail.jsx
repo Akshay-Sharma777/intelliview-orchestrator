@@ -19,12 +19,12 @@ function SessionDetailImpl({ sessionId, onClose }) {
   const [exportingPDF, setExportingPDF] = useState(false);
   
   const { data, error, isLoading, mutate } = useSWR(
-    open && token ? `/session-status/${sessionId}` : null,
+    open ? `/session-status/${sessionId}` : null,
     { refreshInterval: 2000 },
   );
 
   const { data: momentsData } = useSWR(
-    open && token ? `/moments/${sessionId}` : null,
+    open ? `/moments/${sessionId}` : null,
     { refreshInterval: 5000 },
   );
 

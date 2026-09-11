@@ -75,6 +75,7 @@ const endpoints = {
   health: () => api.get("/health"),
   startInterview: (payload) => api.post("/start-interview", payload),
   createCandidate: (payload) => api.post("/candidates", payload),
+  bulkCreateCandidates: (payload) => api.post("/candidates/bulk", payload),
   sessionStatus: (id) => api.get(`/session-status/${id}`),
   activeSessions: () => api.get("/active-sessions"),
   completedSessions: (limit = 50) => api.get(`/completed-sessions?limit=${limit}`),
