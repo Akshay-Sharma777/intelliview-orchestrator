@@ -24,6 +24,20 @@ services:
           memory: 512M
           cpus: "1.0"
 
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.66.0
+    container_name: ai-interview-redis-exporter
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    ports:
+      - "9121:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - ai-interview-network
+    restart: unless-stopped
+
   postgres:
     image: postgres:15-alpine
     platform: linux/amd64
@@ -160,6 +174,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: ai-interview-celery-beat
+    ports:
+      - "9102:9102"
     environment:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
@@ -179,12 +195,7 @@ services:
     working_dir: /app
     networks:
       - ai-interview-network
-    command:
-      - celery
-      - -A
-      - workers.celery_app.celery_app
-      - beat
-      - --loglevel=info
+    command: python -m workers.beat_entrypoint
     restart: unless-stopped
 
   cv-service:
@@ -275,6 +286,7 @@ services:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
       - prometheus_data:/prometheus
     networks:
       - ai-interview-network
@@ -295,6 +307,7 @@ services:
       timeout: 5s
       start_period: 10s
       retries: 3
+
 
   grafana:
     image: grafana/grafana:latest
