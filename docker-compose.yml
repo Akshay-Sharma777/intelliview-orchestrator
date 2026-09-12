@@ -33,7 +33,7 @@ services:
     environment:
       POSTGRES_DB: ai_interview_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be provided}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -62,8 +62,8 @@ services:
       POSTGRES_PORT: "5432"
       POSTGRES_DB: ai_interview_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}"
-      API_TOKEN: "${API_TOKEN:?API_TOKEN must be set}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be provided}"
+      API_TOKEN: "${API_TOKEN:?API_TOKEN must be provided}"
       RATE_LIMIT_PER_MINUTE: "${RATE_LIMIT_PER_MINUTE:-1000}"
       CORS_ALLOW_ORIGINS: "${CORS_ALLOW_ORIGINS:-*}"
       ENABLE_PROMETHEUS: "${ENABLE_PROMETHEUS:-true}"
@@ -109,9 +109,9 @@ services:
       POSTGRES_PORT: "5432"
       POSTGRES_DB: ai_interview_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be provided}"
       API_URL: "http://fastapi:8000"
-      API_TOKEN: "${API_TOKEN:?API_TOKEN must be set}"
+      API_TOKEN: "${API_TOKEN:?API_TOKEN must be provided}"
       WORKER_CONCURRENCY: "4"
       WORKER_ID: "${WORKER_ID:-worker-1}"
       CV_SERVICE_URL: http://cv-service:8001
@@ -140,10 +140,10 @@ services:
       timeout: 10s
       start_period: 30s
       retries: 5
+
     # Resource limits prevent the worker from consuming resources needed
     # by other services. The 4 CPU limit matches the worker concurrency
     # setting, while 2 GiB provides memory headroom for normal workloads.
-
     deploy:
       resources:
         limits:
@@ -163,7 +163,7 @@ services:
       POSTGRES_PORT: "5432"
       POSTGRES_DB: ai_interview_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be provided}"
     depends_on:
       redis:
         condition: service_healthy
@@ -213,7 +213,7 @@ services:
       - "5555:5555"
     environment:
       REDIS_URL: redis://redis:6379/0
-      API_TOKEN: "${API_TOKEN:?API_TOKEN must be set}"
+      API_TOKEN: "${API_TOKEN:?API_TOKEN must be provided}"
       PYTHONPATH: /app
     depends_on:
       redis:
@@ -298,7 +298,7 @@ services:
       - "3001:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD:-admin}"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD:?GRAFANA_PASSWORD must be provided}"
       GF_USERS_ALLOW_SIGN_UP: "false"
     depends_on:
       prometheus:
@@ -308,7 +308,7 @@ services:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     networks:
       - ai-interview-network
-   
+
   jaeger:
     image: jaegertracing/all-in-one:latest
     container_name: ai-interview-jaeger
@@ -373,7 +373,7 @@ services:
     ports:
       - "8081:8080"
     environment:
-      API_TOKEN: "${API_TOKEN:?API_TOKEN must be set}"
+      API_TOKEN: "${API_TOKEN:?API_TOKEN must be provided}"
       DIGEST_BATCH_SIZE: "5"
     volumes:
       - .:/app
