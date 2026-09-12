@@ -46,7 +46,15 @@ pypdf
 python-docx
 faiss-cpu
 google-generativeai
+
+# === Document Parsing / Vector Retrieval ===
+python-docx
+pypdf
+chromadb
+
 # === Load Testing ===
 locust
 pyttsx3==2.99
 chromadb
+pyttsx3>=2.90
+
