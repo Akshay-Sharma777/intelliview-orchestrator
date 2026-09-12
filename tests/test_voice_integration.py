@@ -81,9 +81,7 @@ def test_voice_turn_taking_flow():
         assert ask_data["text"] == question["text"]
 
         # Verify TTS audio was returned.
-        decoded_audio = base64.b64decode(
-            ask_data["audio_base64"]
-        )
+        decoded_audio = base64.b64decode(ask_data["audio_base64"])
 
         assert decoded_audio == fake_audio
         assert len(decoded_audio) > 0
@@ -150,19 +148,10 @@ def test_voice_turn_taking_flow():
 
         updated_session = state_sync.call_args.args[1]
 
-        assert (
-            updated_session["questions_asked"][0]["question_id"]
-            == question_id
-        )
+        assert updated_session["questions_asked"][0]["question_id"] == question_id
 
-        assert (
-            updated_session["answers_provided"][0]["answer_text"]
-            == answer_text
-        )
+        assert updated_session["answers_provided"][0]["answer_text"] == answer_text
 
-        assert (
-            updated_session["feedback_generated"][0]["question_id"]
-            == question_id
-        )
+        assert updated_session["feedback_generated"][0]["question_id"] == question_id
 
         assert updated_session["overall_score"] == 8
