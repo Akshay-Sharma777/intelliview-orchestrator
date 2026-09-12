@@ -13,10 +13,15 @@ __pycache__/
 
 # Local caches
 .cache/
+
 frontend/node_modules/
 frontend/.next/
 
 # Databases
 *.db
-#test
+
+# Celery
+celerybeat-schedule
+
+# Test coverage
 .coverage
