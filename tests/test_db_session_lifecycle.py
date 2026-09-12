@@ -41,9 +41,11 @@ def test_get_db_rolls_back_and_closes_on_exception():
 
 def test_postgres_connection_failure_fails_closed():
     """PostgreSQL connection failure should fail closed without SQLite fallback."""
-    import database.db
     import importlib
+    
     from sqlalchemy.exc import OperationalError
+    
+    import database.db
 
     def mock_create_engine(url, **kwargs):
         mock_eng = MagicMock()
@@ -63,8 +65,9 @@ def test_postgres_connection_failure_fails_closed():
 
 def test_postgres_sslmode_require_passed_to_engine():
     """DATABASE_SSLMODE=require must pass sslmode in connect_args to create_engine."""
-    import database.db
     import importlib
+    
+    import database.db
 
     captured_kwargs = {}
 
