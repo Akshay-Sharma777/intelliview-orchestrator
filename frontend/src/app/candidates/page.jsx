@@ -191,7 +191,7 @@ export default function CandidatesPage() {
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState(null);
-
+  const [sortBy, setSortBy] = useState("risk-desc");
   const { candidates, count, limit, isLoading, error, mutate } =
     useCandidateData(search, skill, position, dateFrom, dateTo, page);
 
@@ -283,10 +283,45 @@ export default function CandidatesPage() {
   };
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return candidates;
-    const q = search.toLowerCase();
-    return candidates.filter((c) => c.candidate_id.toLowerCase().includes(q));
-  }, [candidates, search]);
+  const q = search.trim().toLowerCase();
+
+  const result = q
+    ? candidates.filter((c) =>
+        c.candidate_id.toLowerCase().includes(q)
+      )
+    : [...candidates];
+
+  result.sort((a, b) => {
+    switch (sortBy) {
+      case "risk-desc":
+        return (b.avg_score ?? -Infinity) - (a.avg_score ?? -Infinity);
+
+      case "risk-asc":
+        return (a.avg_score ?? Infinity) - (b.avg_score ?? Infinity);
+
+      case "newest":
+        return new Date(b.updated_at ?? 0) - new Date(a.updated_at ?? 0);
+
+      case "oldest":
+        return new Date(a.updated_at ?? 0) - new Date(b.updated_at ?? 0);
+
+      case "name-asc":
+        return (a.name ?? a.candidate_id ?? "").localeCompare(
+          b.name ?? b.candidate_id ?? ""
+        );
+
+      case "name-desc":
+        return (b.name ?? b.candidate_id ?? "").localeCompare(
+          a.name ?? a.candidate_id ?? ""
+        );
+
+      default:
+        return 0;
+    }
+  });
+
+  return result;
+}, [candidates, search, sortBy]);
 
   const selected = candidates.find((c) => c.candidate_id === selectedId);
 
@@ -500,6 +535,21 @@ export default function CandidatesPage() {
                   }}
                   className="rounded-md border px-3 py-2"
                 />
+
+                                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="rounded-md border px-3 py-2"
+                >
+                  <option value="risk-desc">Risk: High → Low</option>
+                  <option value="risk-asc">Risk: Low → High</option>
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="name-asc">Name: A → Z</option>
+                  <option value="name-desc">Name: Z → A</option>
+                </select>
+
+
               </div>
 
               {error ? (
@@ -534,9 +584,9 @@ export default function CandidatesPage() {
                             {c.total_sessions !== 1 ? "s" : ""}
                           </div>
                         </div>
-                        {c.avg_risk_score != null && (
-                          <Badge variant={riskColor(c.avg_risk_score)}>
-                            {c.avg_risk_score.toFixed(2)}
+                        {c.avg_score != null && (
+                          <Badge variant={riskColor(c.avg_score)}>
+                            {c.avg_score.toFixed(2)}
                           </Badge>
                         )}
                       </button>
@@ -618,8 +668,8 @@ export default function CandidatesPage() {
                         Avg Risk
                       </div>
                       <div className="mt-1 text-lg font-semibold text-zinc-50">
-                        {selected.avg_risk_score != null
-                          ? selected.avg_risk_score.toFixed(3)
+                        {selected.avg_score != null
+                          ? selected.avg_score.toFixed(3)
                           : "—"}
                       </div>
                     </div>
