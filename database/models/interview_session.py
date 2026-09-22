@@ -39,11 +39,11 @@ class InterviewSession(Base):
             name="ck_interview_status",
         ),
         CheckConstraint(
-            "risk_score IS NULL OR risk_score >= 0",
+            "risk_score IS NULL OR (risk_score >= 0 AND risk_score <= 100)",
             name="ck_risk_score_non_negative",
         ),
         CheckConstraint(
-            "overall_score IS NULL OR overall_score >= 0",
+            "overall_score IS NULL OR (overall_score >= 0 AND overall_score <= 100)",
             name="ck_overall_score_non_negative",
         ),
     )
