@@ -13,6 +13,8 @@ from database.models import Candidate, InterviewSession
 from orchestrator.candidate_manager import candidate_manager
 from orchestrator.main import app
 from orchestrator.time_utils import utcnow
+from candidate import Candidate as DuplicateCandidate
+from database.models import Candidate
 
 client = TestClient(app)
 
@@ -266,3 +268,28 @@ def test_streak_and_badge_logic():
 
     cand_d5 = candidate_manager.get_candidate(candidate_id)
     assert cand_d5["practice_streak"] == 1
+
+def test_near_duplicate_does_not_flag_similar_name_with_different_email():
+    """Similar names with unrelated emails should not be flagged as duplicates."""
+
+    class ExistingCandidate:
+        name = "John Smith"
+        email = "john.smith@example.com"
+
+    class FakeQuery:
+        def all(self):
+            return [ExistingCandidate()]
+
+    class FakeSession:
+        def query(self, model):
+            return FakeQuery()
+
+    session = FakeSession()
+
+    result = DuplicateCandidate.is_near_duplicate(
+        session,
+        "Jon Smith",
+        "jon.smith@differentcompany.com",
+    )
+
+    assert result is False

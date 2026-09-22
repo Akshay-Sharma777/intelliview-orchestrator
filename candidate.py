@@ -60,7 +60,8 @@ class Candidate(Base):
                 None, new_email_lower, existing_email
             ).ratio()
 
-            if name_similarity >= threshold or email_similarity >= threshold:
+            # Both name and email must be sufficiently similar
+            if name_similarity >= threshold and email_similarity >= threshold:
                 return True
 
         return False
