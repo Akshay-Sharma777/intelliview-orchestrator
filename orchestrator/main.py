@@ -647,14 +647,22 @@ class CreateTemplateRequest(BaseModel):
 
 @app.get("/health")
 async def health():
+    readiness = await health_monitor.readiness_check()
+    is_ready = readiness.get("ready", False)
     uptime = int((datetime.now(timezone.utc) - APP_START_TIME).total_seconds())
 
-    return {
+    response_payload = {
+        "status": "healthy" if is_ready else "unhealthy",
+        "ready": is_ready,
         "alive": True,
-        "status": "system running",
         "uptime_seconds": uptime,
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "dependencies": readiness.get("dependencies", {}),
     }
+
+    status_code = 200 if is_ready else 503
+    return JSONResponse(status_code=status_code, content=response_payload)
+
 
 
 # ========== Deep Health & Probe Endpoints ==========
