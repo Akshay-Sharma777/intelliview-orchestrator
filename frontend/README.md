@@ -11,7 +11,22 @@ cp .env.example .env.local
 npm run dev
 ```
 
-The dashboard will be available at <http://localhost:3000>.
+### Environment variables
+
+The frontend uses the following environment variables:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_WS_URL=ws://localhost:8000
+```
+
+For local development, `NEXT_PUBLIC_API_URL` should point to the FastAPI backend at `http://localhost:8000`. The WebSocket URL should point to `ws://localhost:8000`.
+
+The default values in `.env.example` are already configured for local development, so no changes are required after copying `.env.example` to `.env.local`.
+
+Make sure the FastAPI backend is running on port `8000` before starting the frontend.
+
+The dashboard will be available at http://localhost:3000.
 
 ## Docker
 
