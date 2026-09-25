@@ -37,6 +37,7 @@ cd src && python3 main.py
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| `GET` | `/health` | Application health check verifying process status and required runtime dependencies (PostgreSQL, Redis, Celery). Returns 200 (healthy) or 503 (unhealthy). |
 | `POST` | `/risk-configs/` | Create config for a job position |
 | `GET` | `/risk-configs/` | List all configs |
 | `GET` | `/risk-configs/{id}` | Get config by ID |

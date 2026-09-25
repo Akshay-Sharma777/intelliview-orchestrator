@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -29,15 +29,65 @@ client = TestClient(app)
 # ---------------------------------------------------------------------------
 
 
-def test_health():
+@patch("orchestrator.main.health_monitor.readiness_check", new_callable=AsyncMock)
+def test_health_endpoint_healthy(mock_readiness):
+    mock_readiness.return_value = {
+        "ready": True,
+        "status": "healthy",
+        "dependencies": {
+            "postgres": {"name": "postgres", "healthy": True, "latency_ms": 1.2, "error": None, "metadata": {}},
+            "redis": {"name": "redis", "healthy": True, "latency_ms": 0.8, "error": None, "metadata": {}},
+            "celery_broker": {"name": "celery_broker", "healthy": True, "latency_ms": 0.9, "error": None, "metadata": {}},
+        },
+        "timestamp": "2026-09-24T23:00:00+00:00",
+    }
     response = client.get("/health")
 
     assert response.status_code == 200
 
     data = response.json()
 
-    assert "status" in data
+    assert data["status"] == "healthy"
+    assert data["ready"] is True
+    assert data["alive"] is True
+    assert "uptime_seconds" in data
     assert "timestamp" in data
+    assert data["dependencies"]["postgres"]["healthy"] is True
+    assert data["dependencies"]["redis"]["healthy"] is True
+    assert data["dependencies"]["celery_broker"]["healthy"] is True
+
+
+@patch("orchestrator.main.health_monitor.readiness_check", new_callable=AsyncMock)
+def test_health_endpoint_unhealthy(mock_readiness):
+    mock_readiness.return_value = {
+        "ready": False,
+        "status": "unhealthy",
+        "dependencies": {
+            "postgres": {
+                "name": "postgres",
+                "healthy": False,
+                "latency_ms": 10.0,
+                "error": "could not connect to server: Connection refused",
+                "metadata": {},
+            },
+            "redis": {"name": "redis", "healthy": True, "latency_ms": 0.8, "error": None, "metadata": {}},
+            "celery_broker": {"name": "celery_broker", "healthy": True, "latency_ms": 0.9, "error": None, "metadata": {}},
+        },
+        "timestamp": "2026-09-24T23:00:00+00:00",
+    }
+    response = client.get("/health")
+
+    assert response.status_code == 503
+
+    data = response.json()
+
+    assert data["status"] == "unhealthy"
+    assert data["ready"] is False
+    assert data["alive"] is True
+    assert "uptime_seconds" in data
+    assert "timestamp" in data
+    assert data["dependencies"]["postgres"]["healthy"] is False
+    assert "Connection refused" in data["dependencies"]["postgres"]["error"]
 
 
 @patch("orchestrator.main.scheduler.can_accept_task", return_value=True)
