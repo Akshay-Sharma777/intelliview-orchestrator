@@ -36,13 +36,13 @@ from opentelemetry.sdk.trace.export import (  # pyright: ignore[reportMissingImp
 from pydantic import BaseModel, Field  # pyright: ignore[reportMissingImports]
 from sqlalchemy import select  # pyright: ignore[reportMissingImports]
 from sqlalchemy.orm import Session  # pyright: ignore[reportMissingImports]
-from starlette.requests import Request as StarletteRequest
 from starlette.middleware.base import (  # pyright: ignore[reportMissingImports]
     BaseHTTPMiddleware,
 )
 from starlette.middleware.cors import (  # pyright: ignore[reportMissingImports]
     CORSMiddleware,
 )
+from starlette.requests import Request as StarletteRequest
 
 from config import (
     API_TOKEN,

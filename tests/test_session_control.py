@@ -273,6 +273,7 @@ def test_start_interview_rejects_retry_after_limit():
             asyncio.run(
                 start_interview(
                     request=request,
+                    http_request=MagicMock(state=MagicMock(request_id='test-request-id')),
                     session_db=MagicMock(),
                 )
             )
@@ -347,6 +348,7 @@ async def test_start_interview_allows_first_retry():
     ):
         response = await start_interview(
             request=request,
+            http_request=MagicMock(state=MagicMock(request_id='test-request-id')),
             session_db=MagicMock(),
         )
 
