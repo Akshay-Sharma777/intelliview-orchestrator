@@ -16,9 +16,9 @@ import socket
 import time
 from datetime import datetime, timezone
 
-from celery import chord, group
-from celery.exceptions import Retry
-from sqlalchemy import select
+from celery import chord, group  # type: ignore[reportMissingImports]
+from celery.exceptions import Retry  # type: ignore[reportMissingImports]
+from sqlalchemy import select  # type: ignore[reportMissingImports]
 
 from database.db import SessionLocal
 from database.models import InterviewSchedule, InterviewSession
@@ -75,6 +75,12 @@ def _update_session_state(session_id: str, **kwargs):
 # ---------------------------------------------------------------------------
 
 
+def _get_request_id(task) -> str | None:
+    """Get the HTTP request ID propagated through Celery task headers."""
+    headers = getattr(task.request, "headers", None) or {}
+    return headers.get("request_id")
+
+
 def _update_infra_health(healthy: bool = True):
     """Sets system infrastructure gauges to reflect live operations."""
     state = 1.0 if healthy else 0.0
@@ -89,10 +95,14 @@ def _update_infra_health(healthy: bool = True):
 
 
 @celery_app.task(bind=True, max_retries=3, name="workers.tasks._run_video")
-def _run_video(self, session_id: str) -> dict:
+def _run_video(self, session_id: str, request_id: str | None = None) -> dict:
     from workers.video_pipeline import run_video_analysis
 
-    logger.info("Starting video analysis stage for session %s", session_id)
+    logger.info(
+        "Starting video analysis stage for session %s (request_id=%s)",
+        session_id,
+        request_id,
+    )
     start = time.perf_counter()
 
     _update_infra_health(True)
@@ -108,16 +118,22 @@ def _run_video(self, session_id: str) -> dict:
         video_result=result,
     )
 
-    logger.info("Video analysis stage completed in %.2fs", latency)
+    logger.info(
+        "Video analysis stage completed in %.2fs (request_id=%s)", latency, request_id
+    )
 
     return result
 
 
 @celery_app.task(bind=True, max_retries=3, name="workers.tasks._run_audio")
-def _run_audio(self, session_id: str) -> dict:
+def _run_audio(self, session_id: str, request_id: str | None = None) -> dict:
     from workers.audio_pipeline import run_audio_analysis
 
-    logger.info("Starting audio analysis stage for session %s", session_id)
+    logger.info(
+        "Starting audio analysis stage for session %s (request_id=%s)",
+        session_id,
+        request_id,
+    )
     start = time.perf_counter()
 
     _update_infra_health(True)
@@ -133,7 +149,9 @@ def _run_audio(self, session_id: str) -> dict:
         audio_result=result,
     )
 
-    logger.info("Audio analysis stage completed in %.2fs", latency)
+    logger.info(
+        "Audio analysis stage completed in %.2fs (request_id=%s)", latency, request_id
+    )
 
     return result
 
@@ -148,7 +166,9 @@ def _run_audio(self, session_id: str) -> dict:
     max_retries=EVALUATION_MAX_RETRIES,
     name="workers.tasks._after_parallel",
 )
-def _after_parallel(self, results: list, session_id: str):
+def _after_parallel(
+    self, results: list, session_id: str, request_id: str | None = None
+):
     """Runs after video + audio group completes; then evaluation + risk.
 
     Chord callback: first argument is the list of results from the parallel
@@ -158,7 +178,11 @@ def _after_parallel(self, results: list, session_id: str):
 
     video_result, audio_result = results[0], results[1]
     try:
-        logger.info("Parallel video+audio done for %s - running evaluation", session_id)
+        logger.info(
+            "Parallel video+audio done for %s - running evaluation (request_id=%s)",
+            session_id,
+            request_id,
+        )
         session_manager.update_session_status(
             session_id, session_manager.EVALUATING, {"stage": "evaluation"}
         )
@@ -190,7 +214,10 @@ def _after_parallel(self, results: list, session_id: str):
         latency = time.perf_counter() - start
         PIPELINE_LATENCY.labels(stage="evaluation").observe(latency)
         logger.info(
-            "Answer evaluation completed for session %s in %.2fs", session_id, latency
+            "Answer evaluation completed for session %s in %.2fs (request_id=%s)",
+            session_id,
+            latency,
+            request_id,
         )
 
         risk_report = RiskScoringEngine.generate_risk_report(
@@ -237,12 +264,20 @@ def _after_parallel(self, results: list, session_id: str):
 
         session_manager.mark_session_completed(session_id, final_risk_score)
         state_sync.delete_session_state(session_id)
-        logger.info("Successfully completed processing for session %s", session_id)
+        logger.info(
+            "Successfully completed processing for session %s (request_id=%s)",
+            session_id,
+            request_id,
+        )
     except Retry:
         raise
     except Exception as exc:
         logger.error(
-            "Post-parallel stage failed for %s: %s", session_id, exc, exc_info=True
+            "Post-parallel stage failed for %s (request_id=%s): %s",
+            session_id,
+            request_id,
+            exc,
+            exc_info=True,
         )
         FAILURE_COUNT.labels(failure_type="post_parallel_error").inc()
         session_manager.mark_session_failed(
@@ -265,6 +300,7 @@ def process_interview_session(self, session_id):
     """
     task_name = self.name
     start_time = time.perf_counter()
+    request_id = _get_request_id(self)
 
     worker_hostname = socket.gethostname()
     registry = WorkerRegistry()
@@ -272,7 +308,10 @@ def process_interview_session(self, session_id):
     try:
         worker_hostname = socket.gethostname()
         logger.info(
-            "Worker %s starting interview session: %s", worker_hostname, session_id
+            "Worker %s starting interview session: %s (request_id=%s)",
+            worker_hostname,
+            session_id,
+            request_id,
         )
 
         db_session = SessionLocal()
@@ -309,8 +348,9 @@ def process_interview_session(self, session_id):
                     start_time = start_time.replace(tzinfo=timezone.utc)
                 if (datetime.now(timezone.utc) - start_time).total_seconds() < 1800:
                     logger.info(
-                        "Skipping duplicate delivery for session %s (already processing)",
+                        "Skipping duplicate delivery for session %s (already processing, request_id=%s)",
                         session_id,
+                        request_id,
                     )
                     return {
                         "session_id": session_id,
@@ -349,13 +389,13 @@ def process_interview_session(self, session_id):
         )
 
         parallel_group = group(
-            _run_video.s(session_id),
-            _run_audio.s(session_id),
+            _run_video.s(session_id, request_id),
+            _run_audio.s(session_id, request_id),
         )
 
         # Chord: runs parallel_group, then _after_parallel with results.
         # chord(self)(callback) applies the chord and returns an AsyncResult.
-        chord(parallel_group)(_after_parallel.s(session_id))
+        chord(parallel_group)(_after_parallel.s(session_id, request_id))
 
         # Record successful task initiation
         registry.record_success(worker_hostname)
@@ -373,8 +413,9 @@ def process_interview_session(self, session_id):
         retry_delay = 2 ** (self.request.retries + 1)
 
         logger.warning(
-            "Task for session %s failed (attempt %d/3), retrying in %ds: %s",
+            "Task for session %s (request_id=%s) failed (attempt %d/3), retrying in %ds: %s",
             session_id,
+            request_id,
             self.request.retries + 1,
             retry_delay,
             exc,

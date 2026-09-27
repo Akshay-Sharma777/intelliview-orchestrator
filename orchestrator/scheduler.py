@@ -63,6 +63,7 @@ class Scheduler:
         session_id: str,
         priority: TaskPriority = TaskPriority.MEDIUM,
         delay_seconds: int = 0,
+        request_id: str | None = None,
     ) -> bool:
         """
         Schedule an interview task for execution
@@ -73,25 +74,35 @@ class Scheduler:
         3. If worker available: assign task directly
         4. If no worker: queue task in Redis
         5. Update session status
+        6. Propagate request ID to the Celery task
 
         Args:
             session_id: Interview session ID
             priority: Task priority level
             delay_seconds: Seconds to delay execution (0 = immediate)
+            request_id: Optional request ID used to correlate the API
+                request with the Celery task and worker logs.
 
         Returns:
             bool: True if scheduling successful
         """
-        logger.info("===== schedule_task() called for session %s =====", session_id)
+        logger.info(
+            "===== schedule_task() called for session %s =====",
+            session_id,
+        )
+
         try:
             logger.info(
-                f"Scheduling task for session {session_id} (priority: {priority.name})"
+                "Scheduling task for session %s (priority: %s)",
+                session_id,
+                priority.name,
             )
 
             # Verify session exists
             session_data = self.session_manager.get_session(session_id)
+
             if not session_data:
-                logger.error(f"Session {session_id} not found")
+                logger.error("Session %s not found", session_id)
                 return False
 
             # Select worker
@@ -101,85 +112,151 @@ class Scheduler:
 
             if not worker:
                 logger.warning(
-                    f"No worker available for session {session_id} - queueing task"
+                    "No worker available for session %s - queueing task",
+                    session_id,
                 )
-                # Queue task directly to Redis, it will be picked up by any available worker
-                return self._queue_task(session_id, delay_seconds)
+
+                return self._queue_task(
+                    session_id,
+                    delay_seconds,
+                    request_id=request_id,
+                )
 
             logger.info(
-                f"Assigned session {session_id} to worker {worker['worker_id']} "
-                f"(load: {worker['active_tasks']}/{worker['capacity']})"
+                "Assigned session %s to worker %s (load: %s/%s)",
+                session_id,
+                worker["worker_id"],
+                worker["active_tasks"],
+                worker["capacity"],
             )
 
             # Update worker active task count
             self.worker_registry.increment_active_tasks(worker["worker_id"])
 
-            # Enqueue the task — if Celery dispatch fails, roll back the
-            # worker counter so the registry doesn't permanently over-report
-            # load for this worker.
+            # Enqueue the task.
+            # If Celery dispatch fails, roll back the worker counter.
             try:
                 logger.info("===== About to dispatch Celery task =====")
-                if delay_seconds > 0:
-                    task = process_interview_session.apply_async(
-                        args=[session_id], countdown=delay_seconds
-                    )
-                    # logger.info(f"Task queued with {delay_seconds}s delay: {task.id}")
-                else:
-                    task = process_interview_session.delay(session_id)
-                    # logger.info(f"Task enqueued immediately: {task.id}")
 
-                logger.info("===== Celery Task ID: %s =====", task.id)
+                task_headers = {"request_id": request_id} if request_id else None
+
+                if delay_seconds > 0:
+                    if task_headers:
+                        task = process_interview_session.apply_async(
+                            args=[session_id],
+                            countdown=delay_seconds,
+                            headers=task_headers,
+                        )
+                    else:
+                        task = process_interview_session.apply_async(
+                            args=[session_id],
+                            countdown=delay_seconds,
+                        )
+                else:
+                    if task_headers:
+                        task = process_interview_session.apply_async(
+                            args=[session_id],
+                            headers=task_headers,
+                        )
+                    else:
+                        task = process_interview_session.delay(session_id)
+
+                logger.info(
+                    "===== Celery Task ID: %s | Request ID: %s =====",
+                    task.id,
+                    request_id,
+                )
 
             except Exception as dispatch_err:
                 logger.error(
-                    f"Failed to enqueue task for session {session_id}: {dispatch_err}"
+                    "Failed to enqueue task for session %s: %s",
+                    session_id,
+                    dispatch_err,
                 )
+
                 self.worker_registry.decrement_active_tasks(worker["worker_id"])
                 raise
 
             return True
 
         except Exception as e:
-            logger.error(f"Error scheduling task: {e!s}")
+            logger.error("Error scheduling task: %s", e)
+
             self.session_manager.mark_session_failed(
-                session_id, f"Scheduling error: {e!s}"
+                session_id,
+                f"Scheduling error: {e}",
             )
+
             return False
 
-    def _queue_task(self, session_id: str, delay_seconds: int = 0) -> bool:
+    def _queue_task(
+        self,
+        session_id: str,
+        delay_seconds: int = 0,
+        request_id: str | None = None,
+    ) -> bool:
         """
         Queue a task to Redis without direct worker assignment
 
         Args:
-            session_id: Session ID
+            session_id: Interview session ID
             delay_seconds: Delay before execution
+            request_id: Optional request ID used to correlate the task.
 
         Returns:
             bool: True if queued successfully
         """
         try:
-            # Ensure status is marked so workers and API pollers know it is dispatched
+            # Ensure status is marked so workers and API pollers know
+            # that the task has been dispatched.
             self.session_manager.update_session_status(
                 session_id,
                 self.session_manager.QUEUED,
-                {"queued_at": datetime.now(timezone.utc).isoformat()},
+                {
+                    "queued_at": datetime.now(timezone.utc).isoformat(),
+                },
             )
 
-            if delay_seconds > 0:
-                task = process_interview_session.apply_async(
-                    args=[session_id], countdown=delay_seconds
-                )
-            else:
-                task = process_interview_session.delay(session_id)
+            task_headers = {"request_id": request_id} if request_id else None
 
-            logger.info(f"Task queued in Redis: {session_id} (task_id: {task.id})")
+            if delay_seconds > 0:
+                if task_headers:
+                    task = process_interview_session.apply_async(
+                        args=[session_id],
+                        countdown=delay_seconds,
+                        headers=task_headers,
+                    )
+                else:
+                    task = process_interview_session.apply_async(
+                        args=[session_id],
+                        countdown=delay_seconds,
+                    )
+            else:
+                if task_headers:
+                    task = process_interview_session.apply_async(
+                        args=[session_id],
+                        headers=task_headers,
+                    )
+                else:
+                    task = process_interview_session.delay(session_id)
+
+            logger.info(
+                "Task queued in Redis: %s (task_id: %s, request_id: %s)",
+                session_id,
+                task.id,
+                request_id,
+            )
+
             return True
 
         except Exception as e:
-            logger.error(f"Error queuing task: {e!s}")
+            logger.error("Error queuing task: %s", e)
+
             self.session_manager.mark_session_failed(
-                session_id, f"Queueing error: {e!s}"
+                session_id,
+                f"Queueing error: {e}",
             )
+
             return False
 
     def get_scheduling_status(self) -> dict[str, Any]:
@@ -191,6 +268,7 @@ class Scheduler:
 
         # Recommend strategy switch if needed
         recommendation = None
+
         if (
             is_overloaded
             and self.load_balancer.strategy != BalancingStrategy.LEAST_LOADED
@@ -219,7 +297,8 @@ class Scheduler:
         return len(available) > 0
 
     def get_estimated_wait_time(
-        self, priority: TaskPriority = TaskPriority.MEDIUM
+        self,
+        priority: TaskPriority = TaskPriority.MEDIUM,
     ) -> int:
         """
         Estimate wait time for a task with given priority
@@ -243,7 +322,8 @@ class Scheduler:
         num_workers = stats["total_workers"]
 
         if num_workers == 0:
-            return -1  # Cannot estimate
+            return -1
 
-        # Rough estimate: (queued_tasks / workers) * avg_duration
+        # Rough estimate:
+        # (queued_tasks / workers) * average task duration
         return int((total_queued_tasks / num_workers) * avg_task_duration)
