@@ -1,4 +1,5 @@
 "use client";
+
 import { useState, useMemo } from "react";
 import { endpoints } from "@/lib/api";
 import useSWR from "swr";
@@ -45,6 +46,7 @@ function parseCSVLine(line) {
 
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
+
     if (char === '"') {
       inQuotes = !inQuotes;
     } else if (char === "," && !inQuotes) {
@@ -54,12 +56,14 @@ function parseCSVLine(line) {
       current += char;
     }
   }
+
   result.push(current.trim());
   return result;
 }
 
 function isValidPhone(phone) {
   if (!PHONE_REGEX.test(phone)) return false;
+
   const digitCount = (phone.match(/\d/g) || []).length;
   return digitCount >= 7 && digitCount <= 15;
 }
@@ -74,17 +78,26 @@ function parseCandidateCSV(csvText) {
   const lines = csvText.split(/\r\n|\n|\r/);
 
   let headerIndex = 0;
-  while (headerIndex < lines.length && lines[headerIndex].trim() === "") {
+
+  while (
+    headerIndex < lines.length &&
+    lines[headerIndex].trim() === ""
+  ) {
     headerIndex++;
   }
 
   if (headerIndex >= lines.length) {
-    return { valid: [], errors: ["The CSV file is empty."], headerError: true };
+    return {
+      valid: [],
+      errors: ["The CSV file is empty."],
+      headerError: true,
+    };
   }
 
   const headerCells = parseCSVLine(lines[headerIndex]).map((h) =>
     h.trim().toLowerCase()
   );
+
   const missingHeaders = REQUIRED_HEADERS.filter(
     (h) => !headerCells.includes(h)
   );
@@ -113,9 +126,10 @@ function parseCandidateCSV(csvText) {
 
   for (let i = headerIndex + 1; i < lines.length; i++) {
     const rawLine = lines[i];
-    if (rawLine.trim() === "") continue; // ignore completely empty lines
 
-    const rowNumber = i + 1; // matches the row number if opened in a spreadsheet
+    if (rawLine.trim() === "") continue;
+
+    const rowNumber = i + 1;
     const cells = parseCSVLine(rawLine);
 
     const candidate = {
@@ -126,12 +140,26 @@ function parseCandidateCSV(csvText) {
     };
 
     const rowErrors = [];
-    if (!candidate.name) rowErrors.push("Name is required");
-    if (!candidate.email) rowErrors.push("Email is required");
-    else if (!EMAIL_REGEX.test(candidate.email)) rowErrors.push("Email is invalid");
-    if (!candidate.position) rowErrors.push("Position is required");
-    if (!candidate.phone) rowErrors.push("Phone is required");
-    else if (!isValidPhone(candidate.phone)) rowErrors.push("Phone is invalid");
+
+    if (!candidate.name) {
+      rowErrors.push("Name is required");
+    }
+
+    if (!candidate.email) {
+      rowErrors.push("Email is required");
+    } else if (!EMAIL_REGEX.test(candidate.email)) {
+      rowErrors.push("Email is invalid");
+    }
+
+    if (!candidate.position) {
+      rowErrors.push("Position is required");
+    }
+
+    if (!candidate.phone) {
+      rowErrors.push("Phone is required");
+    } else if (!isValidPhone(candidate.phone)) {
+      rowErrors.push("Phone is invalid");
+    }
 
     if (rowErrors.length > 0) {
       errors.push(`Row ${rowNumber}: ${rowErrors.join(", ")}`);
@@ -143,7 +171,19 @@ function parseCandidateCSV(csvText) {
   return { valid, errors, headerError: false };
 }
 
-function useCandidateData(search, skill, position, dateFrom, dateTo, page) {
+// ---------------------------------------------------------------------------
+// Candidate data hook — filters and pagination
+// ---------------------------------------------------------------------------
+
+function useCandidateData(
+  search,
+  skill,
+  position,
+  dateFrom,
+  dateTo,
+  page,
+  pageSize
+) {
   const params = new URLSearchParams();
 
   if (search.trim()) {
@@ -167,6 +207,7 @@ function useCandidateData(search, skill, position, dateFrom, dateTo, page) {
   }
 
   params.set("page", page.toString());
+  params.set("limit", pageSize.toString());
 
   const url = `/candidates?${params.toString()}`;
 
@@ -174,8 +215,8 @@ function useCandidateData(search, skill, position, dateFrom, dateTo, page) {
 
   return {
     candidates: data?.candidates ?? [],
-    count: data?.count ?? 0,
-    limit: data?.limit ?? 20,
+    count: data?.total ?? data?.count ?? 0,
+    limit: data?.limit ?? pageSize,
     page: data?.page ?? page,
     isLoading,
     error,
@@ -183,25 +224,48 @@ function useCandidateData(search, skill, position, dateFrom, dateTo, page) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Candidates page
+// ---------------------------------------------------------------------------
+
 export default function CandidatesPage() {
   const [search, setSearch] = useState("");
   const [skill, setSkill] = useState("");
   const [position, setPosition] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [selectedId, setSelectedId] = useState(null);
 
-  const { candidates, count, limit, isLoading, error, mutate } =
-    useCandidateData(search, skill, position, dateFrom, dateTo, page);
+  const {
+    candidates,
+    count,
+    limit,
+    isLoading,
+    error,
+    mutate,
+  } = useCandidateData(
+    search,
+    skill,
+    position,
+    dateFrom,
+    dateTo,
+    page,
+    pageSize
+  );
 
-  // --- Task 2.4: Bulk Candidate Import state ------------------------------
+  const totalPages = Math.max(1, Math.ceil(count / limit));
+
+  // --- Bulk Candidate Import state -----------------------------------------
+
   const [csvErrors, setCsvErrors] = useState([]);
-  const [csvSummary, setCsvSummary] = useState(null); // { valid, invalid }
+  const [csvSummary, setCsvSummary] = useState(null);
   const [validCandidates, setValidCandidates] = useState([]);
-  const [importStatus, setImportStatus] = useState("idle"); // idle | importing | success | error
+  const [importStatus, setImportStatus] = useState("idle");
   const [importMessage, setImportMessage] = useState("");
-  const [importErrors, setImportErrors] = useState([]); // backend-reported per-row failures
+  const [importErrors, setImportErrors] = useState([]);
 
   const resetFileInput = () => {
     const el = document.getElementById("csvFile");
@@ -212,7 +276,6 @@ export default function CandidatesPage() {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Reset previous import state for a fresh run
     setCsvErrors([]);
     setCsvSummary(null);
     setValidCandidates([]);
@@ -224,7 +287,8 @@ export default function CandidatesPage() {
 
     reader.onload = (event) => {
       const csvText = event.target.result;
-      const { valid, errors, headerError } = parseCandidateCSV(csvText);
+      const { valid, errors, headerError } =
+        parseCandidateCSV(csvText);
 
       if (headerError) {
         setCsvErrors(errors);
@@ -234,7 +298,10 @@ export default function CandidatesPage() {
 
       setCsvErrors(errors);
       setValidCandidates(valid);
-      setCsvSummary({ valid: valid.length, invalid: errors.length });
+      setCsvSummary({
+        valid: valid.length,
+        invalid: errors.length,
+      });
     };
 
     reader.onerror = () => {
@@ -255,24 +322,35 @@ export default function CandidatesPage() {
     try {
       const res = await fetch("/candidates/bulk", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ candidates: validCandidates }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          candidates: validCandidates,
+        }),
       });
 
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        // FastAPI returns { detail: string | [{loc, msg, type}, ...] }
         let errMsg = `Import failed (status ${res.status}).`;
+
         if (typeof data?.detail === "string") {
           errMsg = data.detail;
         } else if (Array.isArray(data?.detail)) {
-          errMsg = data.detail.map((d) => d.msg).filter(Boolean).join("; ") || errMsg;
+          errMsg =
+            data.detail
+              .map((d) => d.msg)
+              .filter(Boolean)
+              .join("; ") || errMsg;
         }
+
         throw new Error(errMsg);
       }
 
-      const importedCount = data?.imported ?? validCandidates.length;
+      const importedCount =
+        data?.imported ?? validCandidates.length;
+
       const failedRows = data?.errors ?? [];
 
       setImportStatus("success");
@@ -280,11 +358,17 @@ export default function CandidatesPage() {
 
       if (failedRows.length > 0) {
         setImportMessage(
-          `Imported ${importedCount} candidate${importedCount !== 1 ? "s" : ""}. ${failedRows.length} row${failedRows.length !== 1 ? "s" : ""} failed on the server (see below).`
+          `Imported ${importedCount} candidate${
+            importedCount !== 1 ? "s" : ""
+          }. ${failedRows.length} row${
+            failedRows.length !== 1 ? "s" : ""
+          } failed on the server (see below).`
         );
       } else {
         setImportMessage(
-          `Successfully imported ${importedCount} candidate${importedCount !== 1 ? "s" : ""}.`
+          `Successfully imported ${importedCount} candidate${
+            importedCount !== 1 ? "s" : ""
+          }.`
         );
       }
 
@@ -292,26 +376,29 @@ export default function CandidatesPage() {
       setCsvErrors([]);
       setCsvSummary(null);
       resetFileInput();
+
+      // Refresh the candidate list after importing.
+      setPage(1);
       mutate();
     } catch (err) {
       setImportStatus("error");
-      setImportMessage(err.message || "Failed to import candidates. Please try again.");
+      setImportMessage(
+        err.message ||
+          "Failed to import candidates. Please try again."
+      );
     }
   };
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return candidates;
-    const q = search.toLowerCase();
-    return candidates.filter((c) => c.candidate_id.toLowerCase().includes(q));
-  }, [candidates, search]);
-
-  const selected = candidates.find((c) => c.candidate_id === selectedId);
+  const selected = candidates.find(
+    (c) => c.candidate_id === selectedId
+  );
 
   const handleExportCSV = () => {
     if (candidates.length === 0) {
       toast.error("No candidates to export");
       return;
     }
+
     try {
       exportCandidatesCSV(candidates);
       toast.success("CSV exported successfully");
@@ -322,11 +409,17 @@ export default function CandidatesPage() {
 
   const statusData = useMemo(() => {
     if (!selected) return [];
+
     const counts = {};
+
     for (const s of selected.sessions) {
       counts[s.status] = (counts[s.status] || 0) + 1;
     }
-    return Object.entries(counts).map(([status, count]) => ({ status, count }));
+
+    return Object.entries(counts).map(([status, count]) => ({
+      status,
+      count,
+    }));
   }, [selected]);
 
   return (
@@ -334,7 +427,10 @@ export default function CandidatesPage() {
       <div className="space-y-6 animate-fade-in">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-zinc-50">Candidates</h1>
+            <h1 className="text-2xl font-semibold text-zinc-50">
+              Candidates
+            </h1>
+
             <p className="text-sm text-muted">
               Candidate profiles, interview history, and performance analytics.
             </p>
@@ -358,27 +454,38 @@ export default function CandidatesPage() {
             />
 
             <button
-              onClick={() => document.getElementById("csvFile").click()}
+              onClick={() =>
+                document.getElementById("csvFile").click()
+              }
               disabled={importStatus === "importing"}
               className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Import CSV
             </button>
 
-            <div className="text-xs text-muted">{candidates.length} candidates</div>
+            <div className="text-xs text-muted">
+              {count} candidates
+            </div>
           </div>
         </div>
 
-        <CandidateRegistrationForm onRegistered={mutate} />
+        <CandidateRegistrationForm onRegistered={() => {
+          setPage(1);
+          mutate();
+        }} />
 
         {(csvSummary || importStatus !== "idle") && (
-          <Card title="Bulk Import" description="CSV validation results">
+          <Card
+            title="Bulk Import"
+            description="CSV validation results"
+          >
             <div className="space-y-3">
               {csvSummary && (
                 <div className="flex flex-wrap items-center gap-4 text-sm">
                   <span className="font-medium text-emerald-400">
                     Valid rows: {csvSummary.valid}
                   </span>
+
                   <span className="font-medium text-rose-400">
                     Invalid rows: {csvSummary.invalid}
                   </span>
@@ -389,8 +496,10 @@ export default function CandidatesPage() {
                 <div className="max-h-48 overflow-y-auto rounded-md border border-rose-900/40 bg-rose-950/20 p-3">
                   <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-rose-400">
                     <AlertTriangle size={13} />
-                    {csvErrors.length} row{csvErrors.length !== 1 ? "s" : ""} skipped
+                    {csvErrors.length} row
+                    {csvErrors.length !== 1 ? "s" : ""} skipped
                   </div>
+
                   <ul className="space-y-0.5 text-xs text-rose-300/90">
                     {csvErrors.map((err, idx) => (
                       <li key={idx}>{err}</li>
@@ -417,39 +526,53 @@ export default function CandidatesPage() {
                 <div className="max-h-48 overflow-y-auto rounded-md border border-amber-900/40 bg-amber-950/20 p-3">
                   <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-amber-400">
                     <AlertTriangle size={13} />
-                    {importErrors.length} row{importErrors.length !== 1 ? "s" : ""} failed on the server
+                    {importErrors.length} row
+                    {importErrors.length !== 1 ? "s" : ""} failed on the server
                   </div>
+
                   <ul className="space-y-0.5 text-xs text-amber-300/90">
                     {importErrors.map((e, idx) => (
                       <li key={idx}>
-                        {e.email ? `${e.email}: ` : ""}{e.error || "Unknown error"}
+                        {e.email ? `${e.email}: ` : ""}
+                        {e.error || "Unknown error"}
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {validCandidates.length > 0 && importStatus !== "success" && (
-                <button
-                  onClick={handleBulkImport}
-                  disabled={importStatus === "importing"}
-                  className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {importStatus === "importing"
-                    ? "Importing..."
-                    : `Import ${validCandidates.length} candidate${validCandidates.length !== 1 ? "s" : ""}`}
-                </button>
-              )}
+              {validCandidates.length > 0 &&
+                importStatus !== "success" && (
+                  <button
+                    onClick={handleBulkImport}
+                    disabled={importStatus === "importing"}
+                    className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {importStatus === "importing"
+                      ? "Importing..."
+                      : `Import ${validCandidates.length} candidate${
+                          validCandidates.length !== 1 ? "s" : ""
+                        }`}
+                  </button>
+                )}
             </div>
           </Card>
         )}
 
         <StatsCards
           data={{
-            totalCandidates: candidates.length,
-            pendingReview: candidates.reduce((a, c) => a + c.active_sessions, 0),
-            completed: candidates.reduce((a, c) => a + c.completed_sessions, 0),
-            activeNow: candidates.filter((c) => c.active_sessions > 0).length,
+            totalCandidates: count,
+            pendingReview: candidates.reduce(
+              (a, c) => a + c.active_sessions,
+              0
+            ),
+            completed: candidates.reduce(
+              (a, c) => a + c.completed_sessions,
+              0
+            ),
+            activeNow: candidates.filter(
+              (c) => c.active_sessions > 0
+            ).length,
           }}
         />
 
@@ -526,12 +649,12 @@ export default function CandidatesPage() {
               ) : candidates.length === 0 ? (
                 <EmptyState
                   title="No candidates"
-                  description="Candidate data will appear after sessions are completed."
+                  description="No candidates match your current search or filters."
                 />
               ) : (
                 <>
                   <div className="max-h-[500px] space-y-1 overflow-y-auto">
-                    {filtered.map((c) => (
+                    {candidates.map((c) => (
                       <button
                         key={c.candidate_id}
                         onClick={() => setSelectedId(c.candidate_id)}
@@ -539,18 +662,20 @@ export default function CandidatesPage() {
                           "flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm transition-colors",
                           selectedId === c.candidate_id
                             ? "bg-accent/15 text-accent-light"
-                            : "text-zinc-300 hover:bg-bg-card",
+                            : "text-zinc-300 hover:bg-bg-card"
                         )}
                       >
                         <div className="min-w-0">
                           <div className="truncate font-mono text-xs text-zinc-200">
                             {c.candidate_id}
                           </div>
+
                           <div className="text-[10px] text-muted">
                             {c.total_sessions} session
                             {c.total_sessions !== 1 ? "s" : ""}
                           </div>
                         </div>
+
                         {c.avg_risk_score != null && (
                           <Badge variant={riskColor(c.avg_risk_score)}>
                             {c.avg_risk_score.toFixed(2)}
@@ -560,26 +685,62 @@ export default function CandidatesPage() {
                     ))}
                   </div>
 
-                  <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-                    <button
-                      type="button"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page <= 1}
-                      className="rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Previous
-                    </button>
+                  <div className="mt-4 space-y-3 border-t border-border pt-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <label className="flex items-center gap-2 text-xs text-muted">
+                        Rows per page
 
-                    <span className="text-xs text-muted">Page {page}</span>
+                        <select
+                          value={pageSize}
+                          onChange={(event) => {
+                            setPageSize(Number(event.target.value));
+                            setPage(1);
+                          }}
+                          className="rounded-md border border-border bg-bg-card px-2 py-1.5 text-sm text-zinc-100"
+                        >
+                          <option value={10}>10</option>
+                          <option value={20}>20</option>
+                          <option value={50}>50</option>
+                          <option value={100}>100</option>
+                        </select>
+                      </label>
 
-                    <button
-                      type="button"
-                      onClick={() => setPage((p) => p + 1)}
-                      disabled={candidates.length < limit}
-                      className="rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Next
-                    </button>
+                      <span className="text-xs text-muted">
+                        {count === 0
+                          ? "Showing 0 candidates"
+                          : `Showing ${
+                              (page - 1) * limit + 1
+                            }–${Math.min(page * limit, count)} of ${count} candidates`}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPage((p) => Math.max(1, p - 1))
+                        }
+                        disabled={page <= 1}
+                        className="rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Previous
+                      </button>
+
+                      <span className="text-xs text-muted">
+                        Page {page} of {totalPages}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPage((p) => Math.min(totalPages, p + 1))
+                        }
+                        disabled={page >= totalPages || count === 0}
+                        className="rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Next
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
@@ -590,10 +751,15 @@ export default function CandidatesPage() {
             {!selected ? (
               <Card>
                 <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <UserCircle size={48} className="mb-3 text-muted opacity-30" />
+                  <UserCircle
+                    size={48}
+                    className="mb-3 text-muted opacity-30"
+                  />
+
                   <p className="text-sm text-zinc-300">
                     Select a candidate to view details
                   </p>
+
                   <p className="mt-1 text-xs text-muted">
                     Click on a candidate from the list to see their profile
                   </p>
@@ -610,30 +776,37 @@ export default function CandidatesPage() {
                       <div className="text-[10px] uppercase tracking-wide text-muted">
                         Total
                       </div>
+
                       <div className="mt-1 text-lg font-semibold text-zinc-50">
                         {selected.total_sessions}
                       </div>
                     </div>
+
                     <div className="rounded-md border border-border bg-bg-card px-3 py-2.5">
                       <div className="text-[10px] uppercase tracking-wide text-muted">
                         Completed
                       </div>
+
                       <div className="mt-1 text-lg font-semibold text-emerald-400">
                         {selected.completed_sessions}
                       </div>
                     </div>
+
                     <div className="rounded-md border border-border bg-bg-card px-3 py-2.5">
                       <div className="text-[10px] uppercase tracking-wide text-muted">
                         Failed
                       </div>
+
                       <div className="mt-1 text-lg font-semibold text-rose-400">
                         {selected.failed_sessions}
                       </div>
                     </div>
+
                     <div className="rounded-md border border-border bg-bg-card px-3 py-2.5">
                       <div className="text-[10px] uppercase tracking-wide text-muted">
                         Avg Risk
                       </div>
+
                       <div className="mt-1 text-lg font-semibold text-zinc-50">
                         {selected.avg_risk_score != null
                           ? selected.avg_risk_score.toFixed(3)
@@ -647,9 +820,19 @@ export default function CandidatesPage() {
                   <Card title="Session Status Distribution">
                     <ResponsiveContainer width="100%" height={200}>
                       <BarChart data={statusData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                        <XAxis dataKey="status" stroke="#71717a" fontSize={11} />
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="#27272a"
+                        />
+
+                        <XAxis
+                          dataKey="status"
+                          stroke="#71717a"
+                          fontSize={11}
+                        />
+
                         <YAxis stroke="#71717a" fontSize={11} />
+
                         <Tooltip
                           contentStyle={{
                             background: "#12121a",
@@ -657,6 +840,7 @@ export default function CandidatesPage() {
                             borderRadius: 8,
                           }}
                         />
+
                         <Bar
                           dataKey="count"
                           fill="#6366f1"
@@ -683,12 +867,13 @@ export default function CandidatesPage() {
                           <th className="py-2 pr-4">Updated</th>
                         </tr>
                       </thead>
+
                       <tbody>
                         {selected.sessions
                           .sort(
                             (a, b) =>
                               new Date(b.updated_at || 0) -
-                              new Date(a.updated_at || 0),
+                              new Date(a.updated_at || 0)
                           )
                           .map((s) => (
                             <tr
@@ -698,12 +883,15 @@ export default function CandidatesPage() {
                               <td className="py-2 pr-4 font-mono text-xs text-zinc-300">
                                 {s.session_id}
                               </td>
+
                               <td className="py-2 pr-4">
                                 <Pipeline current={s.status} />
                               </td>
+
                               <td className="py-2 pr-4">
                                 <StatusBadge status={s.status} />
                               </td>
+
                               <td className="py-2 pr-4">
                                 {s.risk_score != null ? (
                                   <Badge variant={riskColor(s.risk_score)}>
@@ -713,9 +901,11 @@ export default function CandidatesPage() {
                                   <span className="text-muted">—</span>
                                 )}
                               </td>
+
                               <td className="py-2 pr-4 font-mono text-xs text-muted">
                                 {s.assigned_node ?? "—"}
                               </td>
+
                               <td className="py-2 pr-4 text-muted">
                                 {formatDate(s.updated_at ?? s.end_time)}
                               </td>
@@ -733,6 +923,10 @@ export default function CandidatesPage() {
     </ErrorBoundary>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Candidate registration form
+// ---------------------------------------------------------------------------
 
 function CandidateRegistrationForm({ onRegistered }) {
   const [name, setName] = useState("");
@@ -762,7 +956,9 @@ function CandidateRegistrationForm({ onRegistered }) {
       });
 
       setSuccess(
-        `Candidate ${candidate.candidate_id ?? candidate.name ?? name.trim()} registered successfully.`
+        `Candidate ${
+          candidate.candidate_id ?? candidate.name ?? name.trim()
+        } registered successfully.`
       );
 
       setName("");
@@ -787,11 +983,7 @@ function CandidateRegistrationForm({ onRegistered }) {
       title="Candidate Registration"
       description="Create a new candidate profile."
     >
-      <form
-        onSubmit={submit}
-        noValidate={false}
-        className="space-y-4"
-      >
+      <form onSubmit={submit} noValidate={false} className="space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label

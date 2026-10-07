@@ -9,7 +9,11 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
-from fastapi import HTTPException
+class HTTPException(Exception):
+    def __init__(self, status_code: int, detail: str | None = None):
+        self.status_code = status_code
+        self.detail = detail
+        super().__init__(detail)
 from sqlalchemy import Text, cast, or_, select
 
 from database.db import SessionLocal
